@@ -1,0 +1,11 @@
+.footer {
+  height: 50px;
+  min-height: 50px;
+  background-color: var(--dark-color-font);
+  color: white;
+  text-align: center;
+  margin-top: auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
