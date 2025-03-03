@@ -56,9 +56,9 @@ export const SubHeader: FC<unknown> = () => {
           {subMenuItems.map((item) => (
             <Nav.Link
               as="button"
-              key={item.link}
+              key={item.location}
               className="btn btn-link p-0"
-              onClick={navigateTo(item.link)}
+              onClick={navigateTo(item.location)}
             >
               {item.title}
             </Nav.Link>

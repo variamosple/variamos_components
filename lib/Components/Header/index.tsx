@@ -1,6 +1,6 @@
 import { FC } from "react";
 import { Container, Nav, Navbar } from "react-bootstrap";
-import { useMenu, useRouter } from "../../Context";
+import { useMenu, useRouter, useSession } from "../../Context";
 import { HeaderOptions } from "./HeaderOptions";
 import { MenuItemComponent } from "./MenuItem";
 import { SubHeader } from "./SubHeader";
@@ -8,11 +8,17 @@ import { SubHeader } from "./SubHeader";
 export interface HeaderProps {
   logoUrl?: string;
   logoAlt?: string;
+  signInUrl: string;
 }
 
-export const Header: FC<HeaderProps> = ({ logoUrl, logoAlt = "App logo" }) => {
+export const Header: FC<HeaderProps> = ({
+  logoUrl,
+  logoAlt = "App logo",
+  signInUrl,
+}) => {
   const { items } = useMenu();
   const { navigate } = useRouter();
+  const { isAuthenticated, isLoading } = useSession();
 
   return (
     <header className="sticky-top">
@@ -33,7 +39,17 @@ export const Header: FC<HeaderProps> = ({ logoUrl, logoAlt = "App logo" }) => {
             ))}
           </Nav>
 
-          <HeaderOptions />
+          <Nav className="me-5 pe-5">
+            <HeaderOptions />
+
+            {!isLoading && !isAuthenticated && (
+              <MenuItemComponent
+                title="Sign In"
+                type="location"
+                location={signInUrl}
+              />
+            )}
+          </Nav>
         </Container>
       </Navbar>
 

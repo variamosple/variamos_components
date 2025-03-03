@@ -1,30 +1,34 @@
-import { Target } from "./Router";
+import { NavigationTarget } from "./Router";
 
-export interface MenuSubItem {
+export interface MenuItemBase {
   title: string;
   allowedRoles?: string[];
   allowedPermissions?: string[];
-  target?: Target;
-  link: string;
+  target?: NavigationTarget;
+}
+
+export interface MenuSubItem extends MenuItemBase {
+  location: string;
 }
 
 export interface SubMenu {
-  path: string;
+  accessibleFrom: string;
   items: MenuSubItem[];
 }
 
-export interface MenuItem {
-  title: string;
-  type: "link" | "dropdown";
-  allowedRoles?: string[];
-  allowedPermissions?: string[];
-  target?: Target;
-  link?: string;
+export interface MenuItem extends MenuItemBase {
+  type: "location" | "dropdown";
+  location?: string;
   children?: MenuSubItem[];
+}
+
+export interface MenuOption extends MenuItemBase {
+  accessibleFrom?: string;
+  location: string;
 }
 
 export interface Menu {
   items: MenuItem[];
   subMenu: SubMenu[];
-  options: MenuSubItem[];
+  options: MenuOption[];
 }

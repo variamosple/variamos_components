@@ -1,0 +1,10 @@
+/src
+/node_modules
+
+eslint.config.js
+index.html
+tsconfig.app.json
+tsconfig.json
+tsconfig.lib.json
+tsconfig.node.json
+vite.config.ts

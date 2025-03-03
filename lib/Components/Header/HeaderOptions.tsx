@@ -1,6 +1,7 @@
 import { FC, useMemo } from "react";
-import { Nav, NavDropdown } from "react-bootstrap";
+import { NavDropdown } from "react-bootstrap";
 import { useMenu, useRouter, useSession } from "../../Context";
+import { mapToWebTarget } from "../../Model";
 
 export const HeaderOptions: FC<unknown> = () => {
   const { user, isAuthenticated, logout } = useSession();
@@ -43,29 +44,30 @@ export const HeaderOptions: FC<unknown> = () => {
     });
   }, [options, user]);
 
-  return (
-    <Nav>
-      <NavDropdown
-        title={user?.name || "Options"}
-        className="me-5 pe-5"
-        id="nav-dropdown"
-      >
-        {menuOptions?.map((option) => (
-          <NavDropdown.Item
-            key={option.title}
-            onClick={() => navigate(option.link, { target: option.target })}
-          >
-            {option.title}
-          </NavDropdown.Item>
-        ))}
+  if (!menuOptions?.length && !isAuthenticated) {
+    return null;
+  }
 
-        {isAuthenticated && (
-          <>
-            <NavDropdown.Divider />
-            <NavDropdown.Item onClick={logout}>Logout</NavDropdown.Item>
-          </>
-        )}
-      </NavDropdown>
-    </Nav>
+  return (
+    <NavDropdown title={user?.name || "Options"} id="nav-dropdown">
+      {menuOptions?.map((option) => (
+        <NavDropdown.Item
+          key={option.title}
+          onClick={() =>
+            navigate(option.location, {
+              target: mapToWebTarget(option.target),
+            })
+          }
+        >
+          {option.title}
+        </NavDropdown.Item>
+      ))}
+
+      {isAuthenticated && !!menuOptions?.length && <NavDropdown.Divider />}
+
+      {isAuthenticated && (
+        <NavDropdown.Item onClick={logout}>Logout</NavDropdown.Item>
+      )}
+    </NavDropdown>
   );
 };

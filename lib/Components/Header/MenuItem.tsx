@@ -1,13 +1,13 @@
 import { FC, useMemo } from "react";
 import { Nav, NavDropdown } from "react-bootstrap";
 import { useRouter, useSession } from "../../Context";
-import { MenuItem } from "../../Model";
+import { mapToWebTarget, MenuItem } from "../../Model";
 
 export const MenuItemComponent: FC<MenuItem> = ({
   title,
   type,
-  link,
-  target = "_self",
+  location,
+  target,
   children,
 }) => {
   const { user } = useSession();
@@ -48,12 +48,12 @@ export const MenuItemComponent: FC<MenuItem> = ({
     });
   }, [children, user]);
 
-  if (type === "link") {
+  if (type === "location") {
     return (
       <Nav.Link
         as="button"
         className="btn btn-link"
-        onClick={() => navigate(link!, { target })}
+        onClick={() => navigate(location!, { target: mapToWebTarget(target) })}
       >
         {title}
       </Nav.Link>
@@ -67,7 +67,9 @@ export const MenuItemComponent: FC<MenuItem> = ({
           as="button"
           key={subMenuItem.title}
           onClick={() =>
-            navigate(subMenuItem.link, { target: subMenuItem.target })
+            navigate(subMenuItem.location, {
+              target: mapToWebTarget(subMenuItem.target),
+            })
           }
         >
           {subMenuItem.title}
