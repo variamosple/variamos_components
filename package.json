@@ -16,7 +16,6 @@
     "build": "tsc --p ./tsconfig.lib.json && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "prepublishOnly": "npm run build",
     "prepack": "npm run build"
   },
   "peerDependencies": {
