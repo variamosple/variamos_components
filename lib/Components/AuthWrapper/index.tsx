@@ -30,6 +30,16 @@ export const AuthWrapper: React.FC<AuthWrapperProps> = ({
     }
   }, [isAuthenticated, isLoading, redirectPath, navigate, isRedirecting]);
 
+  useEffect(() => {
+    const url = new URL(window.location.href);
+
+    if (url.searchParams.has("authToken")) {
+      localStorage.setItem("authToken", url.searchParams.get("authToken")!);
+      url.searchParams.delete("authToken");
+      window.history.replaceState({}, "", url);
+    }
+  }, []);
+
   if (isLoading || !isAuthenticated) {
     return (
       <div className="d-flex justify-content-center align-items-center w-100 h-100">

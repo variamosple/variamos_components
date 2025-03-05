@@ -15,7 +15,7 @@ import {
   ResponseModel,
 } from "../Model";
 import { useRouter } from "./RouterContext";
-import { useSession } from "./SessionsContext";
+import { useSession } from "./SessionContext";
 
 export interface MenuContext {
   items: MenuItem[];

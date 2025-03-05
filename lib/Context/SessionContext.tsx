@@ -6,10 +6,12 @@ import {
   useEffect,
   useState,
 } from "react";
+import { Events } from "../Common";
 import { usePageVisibility } from "../Hooks/usePageVisibility";
 import {
   Credentials,
   ResponseModel,
+  SessionInfoResponse,
   SessionUser,
   singInResponse,
   UserRegistration,
@@ -31,8 +33,24 @@ const SessionContext = createContext<SessionContextType | undefined>(undefined);
 
 const guestIdKey = "guestId";
 
+const redirect = (location?: string) => {
+  if (!location) {
+    return;
+  }
+
+  Events.publish("variamosNavigate", location);
+};
+
+const setToken = (token?: string) => {
+  if (!token) {
+    return;
+  }
+
+  sessionStorage.setItem("authToken", token);
+};
+
 export interface SessionProviderProps {
-  getSessionInfo: () => Promise<ResponseModel<SessionUser>>;
+  getSessionInfo: () => Promise<ResponseModel<SessionInfoResponse>>;
   requestLogout: () => Promise<ResponseModel<void>>;
   requestSignIn?: (
     request: Credentials
@@ -64,7 +82,9 @@ export const SessionProvider: FC<SessionProviderProps> = ({
     getSessionInfo()
       .then((result) => {
         if (!result?.errorCode) {
-          setUser(result?.data ?? null);
+          setToken(result?.data?.authToken);
+          setUser(result?.data?.user ?? null);
+          redirect(result?.data?.redirect);
         } else {
           setUser(null);
         }
@@ -81,7 +101,9 @@ export const SessionProvider: FC<SessionProviderProps> = ({
         getSessionInfo()
           .then((result) => {
             if (!result?.errorCode) {
-              setUser(result?.data ?? null);
+              setToken(result?.data?.authToken);
+              setUser(result?.data?.user ?? null);
+              redirect(result?.data?.redirect);
             } else {
               setUser(null);
             }
@@ -127,7 +149,9 @@ export const SessionProvider: FC<SessionProviderProps> = ({
         return getSessionInfo()
           .then((result) => {
             if (!result?.errorCode) {
-              setUser(result?.data ?? null);
+              setToken(result?.data?.authToken);
+              setUser(result?.data?.user ?? null);
+              redirect(result?.data?.redirect);
             } else {
               setUser(null);
               response.withError(result.errorCode, result.message!);
@@ -162,7 +186,9 @@ export const SessionProvider: FC<SessionProviderProps> = ({
         return getSessionInfo()
           .then((result) => {
             if (!result?.errorCode) {
-              setUser(result?.data ?? null);
+              setToken(result?.data?.authToken);
+              setUser(result?.data?.user ?? null);
+              redirect(result?.data?.redirect);
             } else {
               setUser(null);
               response.withError(result.errorCode, result.message!);
@@ -179,6 +205,7 @@ export const SessionProvider: FC<SessionProviderProps> = ({
 
   const logout = () => {
     requestLogout().then(() => {
+      sessionStorage.removeItem("authToken");
       setUser(null);
     });
   };

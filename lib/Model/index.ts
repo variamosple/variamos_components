@@ -3,6 +3,7 @@ export * from "./Menu";
 export * from "./PagedModel";
 export * from "./ResponseModel";
 export * from "./Router";
+export * from "./SessionInfoResponse";
 export * from "./SessionUser";
 export * from "./SingInResponse";
 export * from "./UserRegistration";
