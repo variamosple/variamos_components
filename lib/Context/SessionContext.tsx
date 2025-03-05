@@ -46,10 +46,11 @@ const setToken = (token?: string) => {
     return;
   }
 
-  sessionStorage.setItem("authToken", token);
+  localStorage.setItem("authToken", token);
 };
 
 export interface SessionProviderProps {
+  loginUrl: string;
   getSessionInfo: () => Promise<ResponseModel<SessionInfoResponse>>;
   requestLogout: () => Promise<ResponseModel<void>>;
   requestSignIn?: (
@@ -65,6 +66,7 @@ export interface SessionProviderProps {
 }
 
 export const SessionProvider: FC<SessionProviderProps> = ({
+  loginUrl,
   getSessionInfo,
   requestSignUp,
   requestSignIn,
@@ -205,8 +207,12 @@ export const SessionProvider: FC<SessionProviderProps> = ({
 
   const logout = () => {
     requestLogout().then(() => {
-      sessionStorage.removeItem("authToken");
-      setUser(null);
+      localStorage.removeItem("authToken");
+      redirect(loginUrl);
+
+      setTimeout(() => {
+        setUser(null);
+      }, 200);
     });
   };
 
