@@ -25,7 +25,8 @@ export default defineConfig({
       formats: ["es"],
     },
     rollupOptions: {
-      external: ["react", "react-dom"],
+      external: (id) =>
+        /^(react|react-dom|react-bootstrap|react-bootstrap-icons)(\/.*)?$/.test(id),
       input: Object.fromEntries(
         // https://rollupjs.org/configuration-options/#input
         glob
