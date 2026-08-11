@@ -25,8 +25,11 @@ export default defineConfig({
       formats: ["es"],
     },
     rollupOptions: {
-      external: (id) =>
-        /^(react|react-dom|react-bootstrap|react-bootstrap-icons)(\/.*)?$/.test(id),
+      external: (id) => {
+        const isPackage = /^(react|react-dom|react-bootstrap|react-bootstrap-icons)(\/.*)?$/.test(id);
+        const isNodeModule = /\/node_modules\/(react|react-dom|react-bootstrap|react-bootstrap-icons)\//.test(id);
+        return isPackage || isNodeModule;
+      },
       input: Object.fromEntries(
         // https://rollupjs.org/configuration-options/#input
         glob
