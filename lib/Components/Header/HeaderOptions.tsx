@@ -11,7 +11,15 @@ export const HeaderOptions: FC<unknown> = () => {
   const { navigate } = useRouter();
 
   const [showBugModal, setShowBugModal] = useState(false);
-  const [categories, setCategories] = useState<string[]>([]);
+  const [categories] = useState<string[]>([
+    "Editor",
+    "Model",
+    "Language",
+    "Project",
+    "Simulation",
+    "Account/Security",
+    "Other",
+  ]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Default to localhost:4000/v1 in dev or relative /v1 in production
@@ -26,23 +34,6 @@ export const HeaderOptions: FC<unknown> = () => {
       Events.unsubscribe<Record<string, never>>("openReportBugModal", handleOpenModal);
     };
   }, []);
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetch(`${adminApiUrl}/bugs/categories`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("authToken") || ""}`,
-        },
-      })
-        .then((res) => res.json())
-        .then((res) => {
-          if (res && res.data) {
-            setCategories(res.data);
-          }
-        })
-        .catch((err) => console.error("Failed to load bug categories", err));
-    }
-  }, [isAuthenticated, adminApiUrl]);
 
   const handleCreateBugSubmit = async (
     data: { title: string; description: string; category: string },
