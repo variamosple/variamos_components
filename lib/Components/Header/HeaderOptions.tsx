@@ -57,7 +57,10 @@ export const HeaderOptions: FC<HeaderOptionsProps> = ({ adminApiUrl: propAdminAp
         formData.append("file", file);
       }
 
-      const apiBase = adminApiUrl.replace(/\/v1$/, "");
+      let apiBase = adminApiUrl.replace(/\/v1$/, "");
+      if (apiBase.endsWith("/")) {
+        apiBase = apiBase.slice(0, -1);
+      }
 
       const headers: Record<string, string> = {};
       const token = localStorage.getItem("authToken");
