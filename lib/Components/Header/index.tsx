@@ -9,12 +9,14 @@ export interface HeaderProps {
   logoUrl?: string;
   logoAlt?: string;
   signInUrl: string;
+  adminApiUrl?: string;
 }
 
 export const Header: FC<HeaderProps> = ({
   logoUrl,
   logoAlt = "App logo",
   signInUrl,
+  adminApiUrl,
 }) => {
   const { items } = useMenu();
   const { navigate } = useRouter();
@@ -40,7 +42,7 @@ export const Header: FC<HeaderProps> = ({
           </Nav>
 
           <Nav className="me-5 pe-5">
-            <HeaderOptions />
+            <HeaderOptions adminApiUrl={adminApiUrl} />
 
             {!isLoading && !isAuthenticated && (
               <MenuItemComponent

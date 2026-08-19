@@ -5,7 +5,11 @@ import { mapToWebTarget } from "../../Model";
 import { Events } from "../../Common";
 import { BugFormModal } from "./BugFormModal";
 
-export const HeaderOptions: FC<unknown> = () => {
+export interface HeaderOptionsProps {
+  adminApiUrl?: string;
+}
+
+export const HeaderOptions: FC<HeaderOptionsProps> = ({ adminApiUrl: propAdminApiUrl }) => {
   const { user, isAuthenticated, logout } = useSession();
   const { options } = useMenu();
   const { navigate } = useRouter();
@@ -22,8 +26,8 @@ export const HeaderOptions: FC<unknown> = () => {
   ]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Default to localhost:4000/v1 in dev or relative /v1 in production
-  const adminApiUrl = (import.meta.env?.VITE_ADMIN_API_URL) || "http://localhost:4000/v1";
+  // Prioritize prop, fallback to environment variable, then "/v1" as relative path in production
+  const adminApiUrl = propAdminApiUrl || (import.meta.env?.VITE_ADMIN_API_URL) || "/v1";
 
   useEffect(() => {
     const handleOpenModal = () => {
