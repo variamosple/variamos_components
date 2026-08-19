@@ -46,16 +46,26 @@ export const HeaderOptions: FC<unknown> = () => {
       formData.append("description", data.description);
       formData.append("priority", "medium");
       formData.append("category", data.category);
+      if (user?.email) {
+        formData.append("reporterEmail", user.email);
+      }
       if (file) {
         formData.append("file", file);
       }
 
-      const response = await fetch(`${adminApiUrl}/bugs`, {
+      const apiBase = adminApiUrl.replace(/\/v1$/, "");
+
+      const headers: Record<string, string> = {};
+      const token = localStorage.getItem("authToken");
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`${apiBase}/bugs`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("authToken") || ""}`,
-        },
+        headers,
         body: formData,
+        credentials: "include",
       });
 
       const res = await response.json();
