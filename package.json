@@ -25,7 +25,8 @@
     "react-dom": "^18.3.1 || ^19.0.0"
   },
   "dependencies": {
-    "@variamosple/variamos-components": "file:"
+    "@variamosple/variamos-components": "file:",
+    "socket.io-client": "^4.8.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.19.0",
