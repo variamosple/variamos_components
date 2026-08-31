@@ -18,7 +18,7 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
     <Button
       variant="link"
       onClick={onClick}
-      className={`position-relative p-2 text-dark ${className}`}
+      className={`position-relative p-2 text-light ${className}`}
       aria-label="Notifications"
       style={{ boxShadow: "none" }}
     >
