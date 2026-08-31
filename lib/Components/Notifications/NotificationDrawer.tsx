@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Offcanvas, Nav, Button, ListGroup, Spinner } from "react-bootstrap";
+import { Offcanvas, Nav, Button, Spinner } from "react-bootstrap";
 import { Gear, ArrowLeft, CheckAll, Trash, Inbox, CircleFill } from "react-bootstrap-icons";
 import { useNotifications, NotificationItem } from "../../Context/NotificationContext";
 import { NotificationSettings } from "./NotificationSettings";
@@ -23,6 +23,10 @@ const CLIENT_TEMPLATES: Record<string, { title: string; body: string }> = {
     title: "Notification Test",
     body: "Hello {{name}}, this is a real-time notification test.",
   },
+  admin_alert: {
+    title: "{{title}}",
+    body: "{{body}}",
+  },
 };
 
 export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
@@ -36,6 +40,7 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
     markAsRead,
     markAllAsRead,
     emptyTrash,
+    deleteNotification,
   } = useNotifications();
 
   const [activeFolder, setActiveFolder] = useState<"inbox" | "trash">("inbox");
@@ -166,7 +171,7 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
             )}
 
             {/* Notifications List */}
-            <div className="flex-grow-1 overflow-auto">
+            <div className="flex-grow-1 overflow-auto bg-light pt-3">
               {isLoading ? (
                 <div className="text-center py-5">
                   <Spinner animation="border" variant="primary" />
@@ -180,52 +185,79 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
                   </p>
                 </div>
               ) : (
-                <ListGroup variant="flush">
+                <div className="px-3">
                   {notifications.map((item) => {
                     const { title, body } = getNotificationText(item);
+                    const isUnread = activeFolder === "inbox" && !item.isRead;
                     return (
-                      <ListGroup.Item
+                      <div
                         key={item.id}
-                        className={`p-3 border-bottom position-relative ${
-                          activeFolder === "inbox" && !item.isRead ? "bg-light" : ""
+                        className={`p-3 mb-2 rounded border shadow-sm ${
+                          isUnread ? "bg-white border-primary-subtle" : "bg-white border-light"
                         }`}
-                        style={{ transition: "background-color 0.2s" }}
+                        style={{
+                          transition: "all 0.2s ease-in-out",
+                          borderLeft: isUnread ? "4px solid #0d6efd" : "1px solid #dee2e6",
+                        }}
                       >
                         <div className="d-flex justify-content-between align-items-start">
-                          <div className="pe-3">
+                          <div className="pe-2 flex-grow-1">
                             <h6
                               className={`mb-1 ${
-                                activeFolder === "inbox" && !item.isRead
-                                  ? "font-weight-bold text-dark"
-                                  : "text-secondary"
+                                isUnread ? "fw-bold text-dark" : "text-secondary fw-semibold"
                               }`}
-                              style={{ fontSize: "0.95rem" }}
+                              style={{ fontSize: "0.9rem", lineHeight: "1.25" }}
                             >
                               {title}
                             </h6>
-                            <p className="text-muted small mb-2">{body}</p>
-                            <span className="text-muted" style={{ fontSize: "0.75rem" }}>
+                            <p
+                              className="mb-2 text-muted"
+                              style={{ fontSize: "0.8rem", color: "#6c757d", lineHeight: "1.3" }}
+                            >
+                              {body}
+                            </p>
+                            <span className="text-muted d-block" style={{ fontSize: "0.7rem" }}>
                               {formatTime(item.createdAt)}
                             </span>
                           </div>
 
-                          {/* Action badge/dot or button */}
-                          {activeFolder === "inbox" && !item.isRead && (
-                            <Button
-                              variant="link"
-                              className="p-0 text-primary border-0"
-                              onClick={() => markAsRead(item.id)}
-                              title="Mark as read"
-                              style={{ boxShadow: "none" }}
-                            >
-                              <CircleFill size={10} className="text-primary" />
-                            </Button>
-                          )}
+                          <div className="d-flex align-items-center gap-2">
+                            {isUnread && (
+                              <Button
+                                variant="link"
+                                className="p-1 text-primary border-0 d-flex align-items-center"
+                                onClick={() => markAsRead(item.id)}
+                                title="Mark as read"
+                                style={{ boxShadow: "none" }}
+                              >
+                                <CircleFill size={8} className="text-primary" />
+                              </Button>
+                            )}
+                            {activeFolder === "inbox" && (
+                              <Button
+                                variant="link"
+                                className="p-1 text-secondary border-0 d-flex align-items-center"
+                                onClick={() => deleteNotification(item.id)}
+                                title="Move to trash"
+                                style={{ boxShadow: "none" }}
+                                onMouseEnter={(e) => {
+                                  const icon = e.currentTarget.querySelector("svg");
+                                  if (icon) icon.style.fill = "#dc3545";
+                                }}
+                                onMouseLeave={(e) => {
+                                  const icon = e.currentTarget.querySelector("svg");
+                                  if (icon) icon.style.fill = "currentColor";
+                                }}
+                              >
+                                <Trash size={14} style={{ transition: "fill 0.2s" }} />
+                              </Button>
+                            )}
+                          </div>
                         </div>
-                      </ListGroup.Item>
+                      </div>
                     );
                   })}
-                </ListGroup>
+                </div>
               )}
             </div>
           </>

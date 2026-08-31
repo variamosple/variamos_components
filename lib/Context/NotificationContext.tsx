@@ -33,6 +33,7 @@ interface NotificationContextType {
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
   emptyTrash: () => Promise<void>;
+  deleteNotification: (id: string) => Promise<void>;
   fetchPreferences: () => Promise<void>;
   updatePreferences: (updates: Partial<UserNotificationPreferences>) => Promise<void>;
 }
@@ -141,6 +142,27 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
     }
   };
 
+  // 4b. Delete notification
+  const deleteNotification = async (id: string) => {
+    try {
+      const response = await fetch(`${apiUrl}/notifications/${id}`, {
+        method: "DELETE",
+        headers: getHeaders(),
+      });
+      if (response.ok) {
+        setNotifications((prev) => {
+          const removed = prev.find((n) => n.id === id);
+          if (removed && !removed.isRead) {
+            setUnreadCount((count) => Math.max(0, count - 1));
+          }
+          return prev.filter((n) => n.id !== id);
+        });
+      }
+    } catch (error) {
+      console.error("Failed to delete notification:", error);
+    }
+  };
+
   // 5. Fetch preferences
   const fetchPreferences = async () => {
     if (!user) return;
@@ -225,6 +247,7 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
         markAsRead,
         markAllAsRead,
         emptyTrash,
+        deleteNotification,
         fetchPreferences,
         updatePreferences,
       }}
