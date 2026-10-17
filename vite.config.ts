@@ -16,6 +16,8 @@ export default defineConfig({
     dts({
       tsconfigPath: resolve(__dirname, "tsconfig.lib.json"),
       include: ["lib"],
+      // Tests are not part of the published package
+      exclude: ["lib/**/*.test.ts", "lib/**/*.test.tsx"],
     }),
   ],
   build: {
@@ -34,7 +36,7 @@ export default defineConfig({
         // https://rollupjs.org/configuration-options/#input
         glob
           .sync("lib/**/*.{ts,tsx}", {
-            ignore: ["lib/**/*.d.ts"],
+            ignore: ["lib/**/*.d.ts", "lib/**/*.test.{ts,tsx}"],
           })
           .map((file) => [
             // 1. The name of the entry point

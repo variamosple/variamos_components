@@ -4,9 +4,14 @@ import {
   ReactNode,
   useContext,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 import { io, Socket } from "socket.io-client";
+import {
+  accessTokenUrl,
+  createAccessTokenProvider,
+} from "./notificationAccessToken";
 import { useSession } from "./SessionContext";
 
 export interface NotificationItem {
@@ -42,23 +47,39 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 
 export interface NotificationProviderProps {
   apiUrl: string; // e.g., http://localhost:3000
+  /**
+   * Admin API base address, e.g. https://app.variamos.com/variamos_ms_admin/.
+   * When set, requests and the socket carry a notification access token.
+   */
+  adminApiUrl?: string;
   children: ReactNode;
 }
 
 export const NotificationProvider: FC<NotificationProviderProps> = ({
   apiUrl,
+  adminApiUrl,
   children,
 }) => {
   const { user } = useSession();
+  const tokenProvider = useMemo(
+    () =>
+      adminApiUrl
+        ? createAccessTokenProvider({ url: accessTokenUrl(adminApiUrl) })
+        : null,
+    [adminApiUrl],
+  );
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [preferences, setPreferences] = useState<UserNotificationPreferences | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [socket, setSocket] = useState<Socket | null>(null);
 
-  // Helper for API headers
-  const getHeaders = () => {
-    const token = localStorage.getItem("authToken");
+  // Helper for API headers: the notification access token when the admin
+  // service issues one. The recipientId parameters stay during the
+  // transition: the service ignores them once the token is verified.
+  const getHeaders = async (): Promise<Record<string, string>> => {
+    const accessToken = await tokenProvider?.get();
+    const token = accessToken ?? localStorage.getItem("authToken");
     return {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -72,7 +93,7 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
     try {
       const response = await fetch(
         `${apiUrl}/notifications?recipientId=${user.id}&page=${page}&limit=${limit}&folder=${folder}`,
-        { headers: getHeaders() }
+        { headers: await getHeaders() }
       );
       if (response.ok) {
         const data = await response.json();
@@ -96,7 +117,7 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
     try {
       const response = await fetch(`${apiUrl}/notifications/${id}/read`, {
         method: "PATCH",
-        headers: getHeaders(),
+        headers: await getHeaders(),
       });
       if (response.ok) {
         setNotifications((prev) =>
@@ -115,7 +136,7 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
     try {
       const response = await fetch(`${apiUrl}/notifications/read-all?recipientId=${user.id}`, {
         method: "PATCH",
-        headers: getHeaders(),
+        headers: await getHeaders(),
       });
       if (response.ok) {
         setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
@@ -132,7 +153,7 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
     try {
       const response = await fetch(`${apiUrl}/notifications/trash?recipientId=${user.id}`, {
         method: "DELETE",
-        headers: getHeaders(),
+        headers: await getHeaders(),
       });
       if (response.ok) {
         setNotifications([]);
@@ -147,7 +168,7 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
     try {
       const response = await fetch(`${apiUrl}/notifications/${id}`, {
         method: "DELETE",
-        headers: getHeaders(),
+        headers: await getHeaders(),
       });
       if (response.ok) {
         setNotifications((prev) => {
@@ -168,7 +189,7 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
     if (!user) return;
     try {
       const response = await fetch(`${apiUrl}/notifications/preferences?recipientId=${user.id}`, {
-        headers: getHeaders(),
+        headers: await getHeaders(),
       });
       if (response.ok) {
         const data = await response.json();
@@ -185,7 +206,7 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
     try {
       const response = await fetch(`${apiUrl}/notifications/preferences?recipientId=${user.id}`, {
         method: "PATCH",
-        headers: getHeaders(),
+        headers: await getHeaders(),
         body: JSON.stringify(updates),
       });
       if (response.ok) {
@@ -200,6 +221,7 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
   // Connect WebSockets and fetch initial data on login
   useEffect(() => {
     if (!user) {
+      tokenProvider?.clear();
       if (socket) {
         socket.disconnect();
         setSocket(null);
@@ -210,8 +232,14 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
       return;
     }
 
-    // Connect to WebSocket server using query parameter authentication
+    // The access token is read again on every (re)connection; the userId
+    // query stays during the transition, as a fallback in observe mode.
     const newSocket = io(apiUrl, {
+      auth: (callback) => {
+        void (tokenProvider?.get() ?? Promise.resolve(null)).then((token) =>
+          callback(token ? { token } : {}),
+        );
+      },
       query: { userId: user.id },
       transports: ["websocket"],
     });
@@ -234,7 +262,7 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
     return () => {
       newSocket.disconnect();
     };
-  }, [user, apiUrl]);
+  }, [user, apiUrl, tokenProvider]);
 
   return (
     <NotificationContext.Provider
