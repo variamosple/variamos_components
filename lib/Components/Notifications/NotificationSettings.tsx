@@ -1,6 +1,11 @@
 import React from "react";
 import { Form, Card, Spinner, Alert } from "react-bootstrap";
 import { useNotifications } from "../../Context/NotificationContext";
+import {
+  isEventMuted,
+  MUTABLE_EVENT_TYPES,
+  toggleMuted,
+} from "./mutedEventTypes";
 
 export const NotificationSettings: React.FC = () => {
   const { preferences, updatePreferences, isLoading } = useNotifications();
@@ -12,11 +17,9 @@ export const NotificationSettings: React.FC = () => {
 
   const handleMutedToggle = (eventType: string) => {
     if (!preferences) return;
-    const isMuted = preferences.mutedEventTypes.includes(eventType);
-    const newMuted = isMuted
-      ? preferences.mutedEventTypes.filter((t) => t !== eventType)
-      : [...preferences.mutedEventTypes, eventType];
-    updatePreferences({ mutedEventTypes: newMuted });
+    updatePreferences({
+      mutedEventTypes: toggleMuted(preferences.mutedEventTypes, eventType),
+    });
   };
 
   if (isLoading && !preferences) {
@@ -30,13 +33,6 @@ export const NotificationSettings: React.FC = () => {
   if (!preferences) {
     return <Alert variant="warning">Unable to load notification preferences.</Alert>;
   }
-
-  // Predefined event types in VariaMos system
-  const eventTypes = [
-    { key: "review_assigned", label: "Review Assignments (Relectures)" },
-    { key: "project_created", label: "Project Creations" },
-    { key: "system_alert", label: "System Alerts" },
-  ];
 
   return (
     <Card className="border-0 shadow-sm">
@@ -65,8 +61,8 @@ export const NotificationSettings: React.FC = () => {
         <h6 className="mb-3 text-secondary font-weight-bold">Mute Event Types</h6>
         <p className="text-muted small mb-3">Check events you do NOT want to receive notifications for.</p>
         <Form.Group>
-          {eventTypes.map((event) => {
-            const isMuted = preferences.mutedEventTypes.includes(event.key);
+          {MUTABLE_EVENT_TYPES.map((event) => {
+            const isMuted = isEventMuted(preferences.mutedEventTypes, event.key);
             return (
               <Form.Check
                 type="checkbox"
