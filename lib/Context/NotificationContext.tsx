@@ -17,8 +17,8 @@ import { useSession } from "./SessionContext";
 export interface NotificationItem {
   id: string;
   templateKey: string;
-  variables: Record<string, any>;
-  metadata: Record<string, any>;
+  variables: Record<string, unknown>;
+  metadata: Record<string, unknown>;
   isRead: boolean;
   createdAt: string;
 }

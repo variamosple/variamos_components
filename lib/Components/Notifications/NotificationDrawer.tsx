@@ -54,7 +54,7 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
   }, [show, activeFolder]);
 
   // Interpolates template variables (e.g. {{name}} -> Nathan)
-  const renderTemplateText = (templateStr: string, variables: Record<string, any>) => {
+  const renderTemplateText = (templateStr: string, variables: Record<string, unknown>) => {
     let result = templateStr;
     for (const key of Object.keys(variables)) {
       result = result.replace(new RegExp(`{{${key}}}`, "g"), String(variables[key]));
