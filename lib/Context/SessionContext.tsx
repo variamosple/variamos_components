@@ -16,6 +16,7 @@ import type {
   singInResponse,
   UserRegistration,
 } from "../Model";
+import { forgetStoredSessionToken } from "./storedSessionToken";
 
 interface SessionContextType {
   user: SessionUser | null;
@@ -41,16 +42,8 @@ const redirect = (location?: string) => {
   Events.publish("variamosNavigate", location);
 };
 
-const setToken = (token?: string) => {
-  if (!token) {
-    return;
-  }
-
-  localStorage.setItem("authToken", token);
-};
-
 /**
- * Applies a session-info answer: the token, the user and the redirection.
+ * Applies a session-info answer: the user and the redirection.
  * Returns false when the answer is an error, after clearing the user.
  */
 function applySessionInfo(
@@ -61,7 +54,6 @@ function applySessionInfo(
     setUser(null);
     return false;
   }
-  setToken(result?.data?.authToken);
   setUser(result?.data?.user ?? null);
   redirect(result?.data?.redirect);
   return true;
@@ -98,6 +90,12 @@ export const SessionProvider: FC<SessionProviderProps> = ({
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const isAuthenticated = user !== null;
   const isPageActive = usePageVisibility();
+
+  // The session lives in the admin cookie: a token kept by an older
+  // version is removed
+  useEffect(() => {
+    forgetStoredSessionToken();
+  }, []);
 
   useEffect(() => {
     setIsLoading(true);
@@ -176,7 +174,7 @@ export const SessionProvider: FC<SessionProviderProps> = ({
 
   const logout = () => {
     void requestLogout().then(() => {
-      localStorage.removeItem("authToken");
+      forgetStoredSessionToken();
       redirect(loginUrl);
 
       setTimeout(() => {

@@ -65,7 +65,6 @@ export const HeaderOptions: FC<HeaderOptionsProps> = ({
     const error = await submitBugReport(report, file, {
       adminApiUrl,
       reporterEmail: user?.email,
-      authToken: localStorage.getItem("authToken"),
     });
     setIsSubmitting(false);
     if (error) {
