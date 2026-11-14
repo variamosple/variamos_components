@@ -29,12 +29,14 @@ export default defineConfig({
     },
     rollupOptions: {
       external: (id) => {
+        // The peer dependencies and socket.io-client, a dependency that the
+        // application installs: none of them is copied into the package
         const isPackage =
-          /^(react|react-dom|react-bootstrap|react-bootstrap-icons)(\/.*)?$/.test(
+          /^(react|react-dom|react-bootstrap|react-bootstrap-icons|socket\.io-client)(\/.*)?$/.test(
             id,
           );
         const isNodeModule =
-          /\/node_modules\/(react|react-dom|react-bootstrap|react-bootstrap-icons)\//.test(
+          /\/node_modules\/(react|react-dom|react-bootstrap|react-bootstrap-icons|socket\.io-client)\//.test(
             id,
           );
         return isPackage || isNodeModule;
