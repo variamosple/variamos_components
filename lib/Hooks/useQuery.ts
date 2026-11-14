@@ -20,14 +20,14 @@ export function useQuery<Filter, Response>({
 }: UseQueryProps<Filter, Response>): QueryResult<Filter, Response> {
   const [data, setData] = useState<Response>();
   const [filter, setFilter] = useState<Filter | null>(null);
-  const [isLoading, setIsloading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
   const [error] = useState<string | null>(null);
 
   const loadData = useCallback(
     (next: Filter) => {
       setFilter(next);
-      setIsloading(true);
+      setIsLoading(true);
 
       return queryFunction(next)
         .then((response) => {
@@ -36,7 +36,7 @@ export function useQuery<Filter, Response>({
           return response;
         })
         .finally(() => {
-          setIsloading(false);
+          setIsLoading(false);
           setIsLoaded(true);
         });
     },

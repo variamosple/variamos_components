@@ -4,7 +4,7 @@
  * notification service delivers them whatever is muted here (EV-99).
  */
 export const MUTABLE_EVENT_TYPES = [
-  { key: "review_assigned", label: "Review Assignments (Relectures)" },
+  { key: "review_assigned", label: "Review Assignments" },
   { key: "project_created", label: "Project Creations" },
   {
     key: "admin_alert",
