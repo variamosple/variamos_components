@@ -4,7 +4,7 @@ export class ResponseModel<Type> {
     public errorCode?: number,
     public message?: string,
     public totalCount?: number,
-    public data?: Type
+    public data?: Type,
   ) {}
 
   withData(data: Type): this {

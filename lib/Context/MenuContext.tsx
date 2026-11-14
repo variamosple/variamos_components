@@ -1,13 +1,14 @@
 import {
   createContext,
-  FC,
-  ReactNode,
+  type FC,
+  type ReactNode,
   useContext,
   useEffect,
   useMemo,
 } from "react";
+import { isAllowedFor } from "../Common/isAllowedFor";
 import { useQuery } from "../Hooks";
-import {
+import type {
   Menu,
   MenuItem,
   MenuOption,
@@ -51,39 +52,11 @@ export const MenuContextProvider: FC<MenuContextProviderProps> = ({
   });
 
   const menuItems = useMemo(() => {
-    const permissions = user?.permissions || [];
-    const roles = user?.roles || [];
-
     if (!menu?.items?.length) {
       return [];
     }
 
-    return menu.items.filter((subMenuItem) => {
-      if (
-        !subMenuItem?.allowedPermissions?.length &&
-        !subMenuItem?.allowedRoles?.length
-      ) {
-        return true;
-      }
-
-      let allowed = true;
-
-      if (subMenuItem.allowedRoles) {
-        allowed =
-          allowed &&
-          subMenuItem.allowedRoles.some((role) => roles.includes(role));
-      }
-
-      if (subMenuItem.allowedPermissions) {
-        allowed =
-          allowed &&
-          subMenuItem.allowedPermissions.some((permission) =>
-            permissions.includes(permission)
-          );
-      }
-
-      return allowed;
-    });
+    return menu.items.filter((item) => isAllowedFor(item, user));
   }, [menu?.items, user]);
 
   const subMenu: MenuSubItem[] | undefined = useMemo(() => {
@@ -92,7 +65,7 @@ export const MenuContextProvider: FC<MenuContextProviderProps> = ({
     }
 
     const subMenuItems = menu?.subMenu.find(
-      (item) => basePath === item.accessibleFrom
+      (item) => basePath === item.accessibleFrom,
     );
 
     return subMenuItems?.items || undefined;
@@ -104,13 +77,13 @@ export const MenuContextProvider: FC<MenuContextProviderProps> = ({
     }
 
     return menu?.options.filter(
-      (item) => !item.accessibleFrom || basePath === item.accessibleFrom
+      (item) => !item.accessibleFrom || basePath === item.accessibleFrom,
     );
   }, [menu?.options, basePath]);
 
   useEffect(() => {
     if (!isLoading && !isLoaded) {
-      loadData({});
+      void loadData({});
     }
   }, [isLoading, isLoaded, loadData]);
 

@@ -4,7 +4,7 @@ import { PAGE_VISIT_EVENT } from "../Context/AnalyticsContext";
 
 export function withPageVisit<T extends object>(
   WrappedComponent: React.ComponentType<T>,
-  id: string
+  id: string,
 ) {
   return (props: T) => {
     React.useEffect(() => {

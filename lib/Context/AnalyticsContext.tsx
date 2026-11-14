@@ -1,8 +1,8 @@
-import { createContext, FC, useEffect } from "react";
+import { createContext, type FC, type ReactNode, useEffect } from "react";
 
 import { Events } from "../Common";
 import { useDebouncedValue } from "../Hooks/useDebouncedValue";
-import { ResponseModel } from "../Model";
+import type { ResponseModel } from "../Model";
 
 export const AnalyticsContext = createContext<unknown>({});
 
@@ -10,7 +10,7 @@ export const PAGE_VISIT_EVENT = "page-visit";
 
 export interface AnalyticsProviderProps {
   onVisit: (pageId: string) => Promise<ResponseModel<void>>;
-  children?: React.ReactNode;
+  children?: ReactNode;
 }
 
 export const AnalyticsProvider: FC<AnalyticsProviderProps> = ({
@@ -20,14 +20,17 @@ export const AnalyticsProvider: FC<AnalyticsProviderProps> = ({
   const [pageId, setPageId] = useDebouncedValue<string | null>(null, 10_000);
 
   useEffect(() => {
-    Events.subscribe<{ id: string }>(PAGE_VISIT_EVENT, (event) => {
+    const onPageVisit = (event: CustomEvent<{ id: string }>) => {
       setPageId(event.detail.id);
-    });
+    };
+    Events.subscribe(PAGE_VISIT_EVENT, onPageVisit);
+    // Without it, every new provider left its listener behind
+    return () => Events.unsubscribe(PAGE_VISIT_EVENT, onPageVisit);
   }, [setPageId]);
 
   useEffect(() => {
     if (pageId) {
-      onVisit(pageId).then(() => {});
+      void onVisit(pageId);
     }
   }, [pageId, onVisit]);
 

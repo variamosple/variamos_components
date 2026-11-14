@@ -1,11 +1,11 @@
-import { FC, useState } from "react";
+import { type FC, useState } from "react";
 import { Container, Nav, Navbar } from "react-bootstrap";
 import { useMenu, useRouter, useSession } from "../../Context";
+import { NotificationBell } from "../Notifications/NotificationBell";
+import { NotificationDrawer } from "../Notifications/NotificationDrawer";
 import { HeaderOptions } from "./HeaderOptions";
 import { MenuItemComponent } from "./MenuItem";
 import { SubHeader } from "./SubHeader";
-import { NotificationBell } from "../Notifications/NotificationBell";
-import { NotificationDrawer } from "../Notifications/NotificationDrawer";
 
 export interface HeaderProps {
   logoUrl?: string;
@@ -45,12 +45,18 @@ export const Header: FC<HeaderProps> = ({
           </Nav>
 
           <Nav className="me-5 pe-5 align-items-center">
-            {isAuthenticated && (
+            {isAuthenticated ? (
               <>
-                <NotificationBell onClick={() => setShowDrawer(true)} className="me-2" />
-                <NotificationDrawer show={showDrawer} onClose={() => setShowDrawer(false)} />
+                <NotificationBell
+                  onClick={() => setShowDrawer(true)}
+                  className="me-2"
+                />
+                <NotificationDrawer
+                  show={showDrawer}
+                  onClose={() => setShowDrawer(false)}
+                />
               </>
-            )}
+            ) : null}
             <HeaderOptions adminApiUrl={adminApiUrl} />
 
             {!isLoading && !isAuthenticated && (

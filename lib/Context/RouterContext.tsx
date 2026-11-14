@@ -1,10 +1,10 @@
 import { createContext, useContext } from "react";
-import { Target } from "../Model";
+import type { Target } from "../Model";
 
 export interface RouterContextProps {
   navigate: (
     path: string,
-    options?: { replace?: boolean; target?: Target }
+    options?: { replace?: boolean; target?: Target },
   ) => void;
   params: Record<string, string | undefined>;
   queryParams: URLSearchParams;
@@ -13,7 +13,7 @@ export interface RouterContextProps {
 }
 
 export const RouterContext = createContext<RouterContextProps | undefined>(
-  undefined
+  undefined,
 );
 
 export const getBasePath = () =>

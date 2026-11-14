@@ -17,7 +17,7 @@ const mapping: Record<
 };
 
 export const mapToWebTarget = (
-  target?: NavigationTarget
+  target?: NavigationTarget,
 ): "_blank" | "_self" | "_parent" | "_top" => {
   if (!target) {
     return "_self";

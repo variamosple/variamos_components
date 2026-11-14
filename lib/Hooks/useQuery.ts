@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { ResponseModel } from "../Model";
+import type { ResponseModel } from "../Model";
 
 interface UseQueryProps<Filter, Response> {
   queryFunction: (filter: Filter) => Promise<ResponseModel<Response>>;
@@ -25,11 +25,11 @@ export function useQuery<Filter, Response>({
   const [error] = useState<string | null>(null);
 
   const loadData = useCallback(
-    (filter: Filter) => {
-      setFilter(filter);
+    (next: Filter) => {
+      setFilter(next);
       setIsloading(true);
 
-      return queryFunction(filter)
+      return queryFunction(next)
         .then((response) => {
           setData(response.data);
 
@@ -40,7 +40,7 @@ export function useQuery<Filter, Response>({
           setIsLoaded(true);
         });
     },
-    [queryFunction]
+    [queryFunction],
   );
 
   return {

@@ -15,8 +15,8 @@ export const confirmationModalDefaultProps: ConfirmationModalProps =
   Object.freeze({
     message: "",
     show: false,
-    onCancel: () => {},
-    onConfirm: () => {},
+    onCancel: () => undefined,
+    onConfirm: () => undefined,
   });
 
 export default function ConfirmationModal({

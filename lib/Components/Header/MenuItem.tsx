@@ -1,7 +1,8 @@
-import { FC, useMemo } from "react";
+import { type FC, useMemo } from "react";
 import { Nav, NavDropdown } from "react-bootstrap";
+import { isAllowedFor } from "../../Common/isAllowedFor";
 import { useRouter, useSession } from "../../Context";
-import { mapToWebTarget, MenuItem } from "../../Model";
+import { type MenuItem, mapToWebTarget } from "../../Model";
 
 export const MenuItemComponent: FC<MenuItem> = ({
   title,
@@ -13,47 +14,19 @@ export const MenuItemComponent: FC<MenuItem> = ({
   const { user } = useSession();
   const { navigate } = useRouter();
   const menuSubItems = useMemo(() => {
-    const permissions = user?.permissions || [];
-    const roles = user?.roles || [];
-
     if (!children) {
       return [];
     }
 
-    return children.filter((subMenuItem) => {
-      if (
-        !subMenuItem?.allowedPermissions?.length &&
-        !subMenuItem?.allowedRoles?.length
-      ) {
-        return true;
-      }
-
-      let allowed = true;
-
-      if (subMenuItem.allowedRoles) {
-        allowed =
-          allowed &&
-          subMenuItem.allowedRoles.some((role) => roles.includes(role));
-      }
-
-      if (subMenuItem.allowedPermissions) {
-        allowed =
-          allowed &&
-          subMenuItem.allowedPermissions.some((permission) =>
-            permissions.includes(permission)
-          );
-      }
-
-      return allowed;
-    });
+    return children.filter((subMenuItem) => isAllowedFor(subMenuItem, user));
   }, [children, user]);
 
-  if (type === "location") {
+  if (type === "location" && location) {
     return (
       <Nav.Link
         as="button"
         className="btn btn-link"
-        onClick={() => navigate(location!, { target: mapToWebTarget(target) })}
+        onClick={() => navigate(location, { target: mapToWebTarget(target) })}
       >
         {title}
       </Nav.Link>

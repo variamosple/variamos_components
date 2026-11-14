@@ -88,8 +88,7 @@ describe("createAccessTokenProvider", () => {
     ["a network error", async () => Promise.reject(new Error("offline"))],
     [
       "an unexpected body",
-      async () =>
-        ({ ok: true, json: async () => ({ data: {} }) }) as Response,
+      async () => ({ ok: true, json: async () => ({ data: {} }) }) as Response,
     ],
   ])("returns null for %s", async (_label, respond) => {
     const provider = createAccessTokenProvider({
