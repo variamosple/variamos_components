@@ -6,6 +6,7 @@ import {
   useState,
 } from "react";
 import { Alert, Button, Form, Modal } from "react-bootstrap";
+import { bugFormErrors, TITLE_MAX_LENGTH } from "./bugFormErrors";
 
 interface BugFormModalProps {
   show: boolean;
@@ -32,7 +33,9 @@ export const BugFormModal: FC<BugFormModalProps> = ({
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [validated, setValidated] = useState(false);
+  // Messages appear after the first submission attempt only
+  const [submitted, setSubmitted] = useState(false);
+  const errors = submitted ? bugFormErrors({ title, description }) : {};
 
   useEffect(() => {
     if (show) {
@@ -40,16 +43,16 @@ export const BugFormModal: FC<BugFormModalProps> = ({
       setDescription("");
       setCategory(categories[0] || "Other");
       setSelectedFile(null);
-      setValidated(false);
+      setSubmitted(false);
     }
   }, [show, categories]);
 
   const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const form = event.currentTarget;
-    if (form.checkValidity() === false) {
+    setSubmitted(true);
+    const invalid = bugFormErrors({ title, description });
+    if (invalid.title || invalid.description) {
       event.stopPropagation();
-      setValidated(true);
       return;
     }
 
@@ -68,7 +71,7 @@ export const BugFormModal: FC<BugFormModalProps> = ({
         <Modal.Title>Report a New Bug</Modal.Title>
       </Modal.Header>
 
-      <Form noValidate validated={validated} onSubmit={handleSubmit}>
+      <Form noValidate onSubmit={handleSubmit}>
         <Modal.Body>
           {errorMessage ? (
             <Alert variant="danger" role="alert">
@@ -83,10 +86,11 @@ export const BugFormModal: FC<BugFormModalProps> = ({
               placeholder="e.g. Build error on auth routes"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              maxLength={100}
+              maxLength={TITLE_MAX_LENGTH}
+              isInvalid={Boolean(errors.title)}
             />
             <Form.Control.Feedback type="invalid">
-              Title is required (max 100 characters)
+              {errors.title}
             </Form.Control.Feedback>
           </Form.Group>
 
@@ -99,9 +103,10 @@ export const BugFormModal: FC<BugFormModalProps> = ({
               placeholder="Describe step-by-step how to reproduce the bug..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+              isInvalid={Boolean(errors.description)}
             />
             <Form.Control.Feedback type="invalid">
-              Description is required
+              {errors.description}
             </Form.Control.Feedback>
           </Form.Group>
 
