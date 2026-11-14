@@ -65,12 +65,12 @@ export interface NotificationProviderProps {
 }
 
 // Headers of the calls to the service: the notification access token when the
-// admin service issues one.
+// admin service issues one. The session token itself is never sent: it stays
+// in the admin cookie.
 const headersFrom =
   (tokenProvider: AccessTokenProvider | null) =>
   async (): Promise<Record<string, string>> => {
-    const accessToken = await tokenProvider?.get();
-    const token = accessToken ?? localStorage.getItem("authToken");
+    const token = await tokenProvider?.get();
     return {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),

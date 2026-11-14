@@ -23,30 +23,24 @@ describe("bugReportUrl", () => {
 });
 
 describe("submitBugReport", () => {
-  it("sends the form with the session token and resolves to null", async () => {
+  it("sends the form with the session cookie and resolves to null", async () => {
     const fetchImpl = answer(true, { data: {} });
 
     const result = await submitBugReport(report, undefined, {
       adminApiUrl: "/v1",
       reporterEmail: "someone@example.com",
-      authToken: "token",
       fetchImpl,
     });
 
     expect(result).toBeNull();
     const [url, init] = fetchImpl.mock.calls[0] ?? [];
     expect(url).toBe("/bugs");
-    expect(init?.headers).toEqual({ Authorization: "Bearer token" });
+    expect(init?.credentials).toBe("include");
+    expect(init?.headers).toBeUndefined();
     const form = init?.body;
     if (!(form instanceof FormData)) throw new Error("No form was sent");
     expect(form.get("category")).toBe("Model");
     expect(form.get("reporterEmail")).toBe("someone@example.com");
-  });
-
-  it("sends no Authorization header without a token", async () => {
-    const fetchImpl = answer(true, {});
-    await submitBugReport(report, undefined, { adminApiUrl: "/v1", fetchImpl });
-    expect(fetchImpl.mock.calls[0]?.[1]?.headers).toEqual({});
   });
 
   it("gives the message of the server when it refuses", async () => {

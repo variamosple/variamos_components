@@ -16,8 +16,6 @@ export function accessTokenUrl(adminApiUrl: string): string {
 
 export interface AccessTokenProviderOptions {
   url: string;
-  /** Session token of the platform, sent to the admin service. */
-  getSessionToken?: () => string | null;
   fetchImpl?: typeof fetch;
   now?: () => number;
   /** A token is renewed this long before it expires. */
@@ -36,7 +34,6 @@ export interface AccessTokenProvider {
  */
 export function createAccessTokenProvider({
   url,
-  getSessionToken = () => localStorage.getItem("authToken"),
   fetchImpl = (...args) => fetch(...args),
   now = Date.now,
   refreshMarginMs = 60_000,
@@ -46,13 +43,8 @@ export function createAccessTokenProvider({
 
   const request = async (): Promise<string | null> => {
     try {
-      const sessionToken = getSessionToken();
-      const response = await fetchImpl(url, {
-        credentials: "include",
-        headers: sessionToken
-          ? { Authorization: `Bearer ${sessionToken}` }
-          : {},
-      });
+      // The admin service reads the session from its httpOnly cookie
+      const response = await fetchImpl(url, { credentials: "include" });
       if (!response.ok) return null;
       const data = fieldOf(await response.json(), "data");
       const token = fieldOf(data, "token");

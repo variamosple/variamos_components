@@ -27,22 +27,18 @@ describe("createAccessTokenProvider", () => {
   const url = "https://admin.example/v1/notifications/access-token";
   const start = Date.parse("2026-10-17T10:00:00Z");
 
-  it("asks the admin service with the session token and credentials", async () => {
+  it("asks the admin service with its session cookie, never a stored token", async () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValue(okResponse("tok-1", "2026-10-17T10:15:00Z"));
     const provider = createAccessTokenProvider({
       url,
       fetchImpl,
-      getSessionToken: () => "session-jwt",
       now: () => start,
     });
 
     await expect(provider.get()).resolves.toBe("tok-1");
-    expect(fetchImpl).toHaveBeenCalledWith(url, {
-      credentials: "include",
-      headers: { Authorization: "Bearer session-jwt" },
-    });
+    expect(fetchImpl).toHaveBeenCalledWith(url, { credentials: "include" });
   });
 
   it("reuses the token until shortly before it expires, then renews it", async () => {
@@ -54,7 +50,6 @@ describe("createAccessTokenProvider", () => {
     const provider = createAccessTokenProvider({
       url,
       fetchImpl,
-      getSessionToken: () => null,
       now: () => clock,
     });
 
@@ -73,7 +68,6 @@ describe("createAccessTokenProvider", () => {
     const provider = createAccessTokenProvider({
       url,
       fetchImpl,
-      getSessionToken: () => null,
       now: () => start,
     });
 
@@ -94,7 +88,6 @@ describe("createAccessTokenProvider", () => {
     const provider = createAccessTokenProvider({
       url,
       fetchImpl: vi.fn().mockImplementation(respond),
-      getSessionToken: () => null,
     });
 
     await expect(provider.get()).resolves.toBeNull();
@@ -107,7 +100,6 @@ describe("createAccessTokenProvider", () => {
     const provider = createAccessTokenProvider({
       url,
       fetchImpl,
-      getSessionToken: () => null,
       now: () => start,
     });
 

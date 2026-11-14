@@ -9,7 +9,6 @@ export interface BugReport {
 export interface BugReportSender {
   adminApiUrl: string;
   reporterEmail?: string;
-  authToken?: string | null;
   fetchImpl?: typeof fetch;
 }
 
@@ -23,7 +22,7 @@ export const bugReportUrl = (adminApiUrl: string) =>
 export async function submitBugReport(
   report: BugReport,
   file: File | undefined,
-  { adminApiUrl, reporterEmail, authToken, fetchImpl = fetch }: BugReportSender,
+  { adminApiUrl, reporterEmail, fetchImpl = fetch }: BugReportSender,
 ): Promise<string | null> {
   const formData = new FormData();
   formData.append("title", report.title);
@@ -36,7 +35,6 @@ export async function submitBugReport(
   try {
     const response = await fetchImpl(bugReportUrl(adminApiUrl), {
       method: "POST",
-      headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
       body: formData,
       credentials: "include",
     });
