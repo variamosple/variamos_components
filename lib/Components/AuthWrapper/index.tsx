@@ -13,7 +13,7 @@ export const AuthWrapper: React.FC<AuthWrapperProps> = ({
   redirectPath,
   children,
 }) => {
-  const [isRedirecting, setIsRegirecting] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const { isAuthenticated, isLoading } = useSession();
   const { navigate } = useRouter();
 
@@ -24,7 +24,7 @@ export const AuthWrapper: React.FC<AuthWrapperProps> = ({
       const searchParams = new URLSearchParams();
       searchParams.set("redirectTo", encodeURIComponent(redirectTo));
 
-      setIsRegirecting(true);
+      setIsRedirecting(true);
       setTimeout(
         () => navigate(`${redirectPath}?${searchParams.toString()}`),
         300,

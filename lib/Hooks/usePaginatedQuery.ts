@@ -37,13 +37,13 @@ export function usePaginatedQuery<Filter extends PagedModel, Response>({
   const [currentPage, setCurrentPage] = useState<number>(initialPage);
   const [totalItems, setTotalItems] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
-  const [isLoading, setIsloading] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error] = useState<string | null>(null);
 
   const loadData = useCallback(
     (next: Filter) => {
       setFilter(next);
-      setIsloading(true);
+      setIsLoading(true);
       setCurrentPage(next.pageNumber || 1);
 
       return queryFunction(next)
@@ -55,7 +55,7 @@ export function usePaginatedQuery<Filter extends PagedModel, Response>({
           return response;
         })
         .finally(() => {
-          setIsloading(false);
+          setIsLoading(false);
         });
     },
     [queryFunction],

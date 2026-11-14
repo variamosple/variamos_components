@@ -18,7 +18,7 @@ The user menu of the header has the class `variamos-header-options`; its id is g
 
 ## Development
 
-Requires Node 26.
+Requires Node 26 (`.nvmrc`, `.mise.toml`). `npm install` sets up the Git hooks: Biome and cspell on the staged files before a commit, the conventional commit format, and typecheck, lint and tests before a push.
 
 | Command | What it does |
 | --- | --- |
@@ -26,6 +26,7 @@ Requires Node 26.
 | `npm run typecheck` | Types of the library, the demo and the Vite configuration |
 | `npm run lint` | Biome (shared configuration of the VariaMos admin module) and the check that no rule is silenced in a comment |
 | `npm run format` | Formats the code with Biome |
+| `npm run spell` | Spelling (cspell) |
 | `npm run find-deadcode` | Unused files, exports and dependencies (knip) |
 | `npm test` | Unit tests (Vitest) |
 | `npm run build` | Builds `dist/` |
