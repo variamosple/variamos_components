@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useSession } from "../../";
+import { useSession } from "../../lib/main";
 
 export const SessionConsumer = () => {
   const { user, isLoading } = useSession();
