@@ -1,4 +1,5 @@
-import React, { ReactNode, useEffect } from "react";
+import type React from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Spinner } from "react-bootstrap";
 import { useRouter, useSession } from "../../Context";
 import { addressWithoutToken } from "./addressWithoutToken";
@@ -12,7 +13,7 @@ export const AuthWrapper: React.FC<AuthWrapperProps> = ({
   redirectPath,
   children,
 }) => {
-  const [isRedirecting, setIsRegirecting] = React.useState(false);
+  const [isRedirecting, setIsRegirecting] = useState(false);
   const { isAuthenticated, isLoading } = useSession();
   const { navigate } = useRouter();
 
@@ -26,7 +27,7 @@ export const AuthWrapper: React.FC<AuthWrapperProps> = ({
       setIsRegirecting(true);
       setTimeout(
         () => navigate(`${redirectPath}?${searchParams.toString()}`),
-        300
+        300,
       );
     }
   }, [isAuthenticated, isLoading, redirectPath, navigate, isRedirecting]);

@@ -1,5 +1,5 @@
-import React from "react";
-import { Button, Badge } from "react-bootstrap";
+import type React from "react";
+import { Badge, Button } from "react-bootstrap";
 import { Bell } from "react-bootstrap-icons";
 import { useNotifications } from "../../Context/NotificationContext";
 
@@ -23,16 +23,16 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
       style={{ boxShadow: "none" }}
     >
       <Bell size={22} />
-      {unreadCount > 0 && (
+      {unreadCount > 0 ? (
         <Badge
           pill
           bg="danger"
           className="position-absolute translate-middle-y start-50 top-0 border border-white"
           style={{ fontSize: "0.65rem", padding: "0.25em 0.5em" }}
         >
-          {unreadCount > 99 ? "99+" : unreadCount}
+          {unreadCount > 99 ? "99+" : String(unreadCount)}
         </Badge>
-      )}
+      ) : null}
     </Button>
   );
 };

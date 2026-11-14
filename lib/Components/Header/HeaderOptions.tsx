@@ -1,144 +1,103 @@
-import { FC, useMemo, useState, useEffect } from "react";
+import {
+  type FC,
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useState,
+} from "react";
 import { NavDropdown } from "react-bootstrap";
+import { Events } from "../../Common";
+import { isAllowedFor } from "../../Common/isAllowedFor";
 import { useMenu, useRouter, useSession } from "../../Context";
 import { mapToWebTarget } from "../../Model";
-import { Events } from "../../Common";
 import { BugFormModal } from "./BugFormModal";
+import { type BugReport, submitBugReport } from "./submitBugReport";
 
 export interface HeaderOptionsProps {
   adminApiUrl?: string;
 }
 
-export const HeaderOptions: FC<HeaderOptionsProps> = ({ adminApiUrl: propAdminApiUrl }) => {
+const BUG_CATEGORIES = [
+  "Editor",
+  "Model",
+  "Language",
+  "Project",
+  "Simulation",
+  "Account/Security",
+  "Other",
+];
+
+export const HeaderOptions: FC<HeaderOptionsProps> = ({
+  adminApiUrl: propAdminApiUrl,
+}) => {
   const { user, isAuthenticated, logout } = useSession();
   const { options } = useMenu();
   const { navigate } = useRouter();
+  const dropdownId = useId();
 
   const [showBugModal, setShowBugModal] = useState(false);
-  const [categories] = useState<string[]>([
-    "Editor",
-    "Model",
-    "Language",
-    "Project",
-    "Simulation",
-    "Account/Security",
-    "Other",
-  ]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Prioritize prop, fallback to environment variable, then "/v1" as relative path in production
-  const adminApiUrl = propAdminApiUrl || (import.meta.env?.VITE_ADMIN_API_URL) || "/v1";
+  const adminApiUrl =
+    propAdminApiUrl || import.meta.env?.VITE_ADMIN_API_URL || "/v1";
 
-  useEffect(() => {
-    const handleOpenModal = () => {
-      setShowBugModal(true);
-    };
-    Events.subscribe<Record<string, never>>("openReportBugModal", handleOpenModal);
-    return () => {
-      Events.unsubscribe<Record<string, never>>("openReportBugModal", handleOpenModal);
-    };
+  const openBugModal = useCallback(() => {
+    setSubmitError(null);
+    setShowBugModal(true);
   }, []);
 
-  const handleCreateBugSubmit = async (
-    data: { title: string; description: string; category: string },
-    file?: File,
-  ) => {
+  useEffect(() => {
+    Events.subscribe<Record<string, never>>("openReportBugModal", openBugModal);
+    return () => {
+      Events.unsubscribe<Record<string, never>>(
+        "openReportBugModal",
+        openBugModal,
+      );
+    };
+  }, [openBugModal]);
+
+  const handleCreateBugSubmit = async (report: BugReport, file?: File) => {
     setIsSubmitting(true);
-    try {
-      const formData = new FormData();
-      formData.append("title", data.title);
-      formData.append("description", data.description);
-      formData.append("priority", "medium");
-      formData.append("category", data.category);
-      if (user?.email) {
-        formData.append("reporterEmail", user.email);
-      }
-      if (file) {
-        formData.append("file", file);
-      }
-
-      let apiBase = adminApiUrl.replace(/\/v1$/, "");
-      if (apiBase.endsWith("/")) {
-        apiBase = apiBase.slice(0, -1);
-      }
-
-      const headers: Record<string, string> = {};
-      const token = localStorage.getItem("authToken");
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-
-      const response = await fetch(`${apiBase}/bugs`, {
-        method: "POST",
-        headers,
-        body: formData,
-        credentials: "include",
-      });
-
-      const res = await response.json();
-      setIsSubmitting(false);
-
-      if (response.ok && !res.errorCode) {
-        setShowBugModal(false);
-      } else {
-        alert(res.message || "Failed to submit bug. Please try again.");
-      }
-    } catch (err) {
-      setIsSubmitting(false);
-      alert("Failed to submit bug. Please try again.");
-      console.error(err);
+    setSubmitError(null);
+    const error = await submitBugReport(report, file, {
+      adminApiUrl,
+      reporterEmail: user?.email,
+      authToken: localStorage.getItem("authToken"),
+    });
+    setIsSubmitting(false);
+    if (error) {
+      setSubmitError(error);
+    } else {
+      setShowBugModal(false);
     }
   };
 
-  const menuOptions = useMemo(() => {
-    const permissions = user?.permissions || [];
-    const roles = user?.roles || [];
+  const menuOptions = useMemo(
+    () => (options ?? []).filter((option) => isAllowedFor(option, user)),
+    [options, user],
+  );
 
-    if (!options?.length) {
-      return [];
-    }
-
-    return options.filter((subMenuItem) => {
-      if (
-        !subMenuItem?.allowedPermissions?.length &&
-        !subMenuItem?.allowedRoles?.length
-      ) {
-        return true;
-      }
-
-      let allowed = true;
-
-      if (subMenuItem.allowedRoles) {
-        allowed =
-          allowed &&
-          subMenuItem.allowedRoles.some((role) => roles.includes(role));
-      }
-
-      if (subMenuItem.allowedPermissions) {
-        allowed =
-          allowed &&
-          subMenuItem.allowedPermissions.some((permission) =>
-            permissions.includes(permission)
-          );
-      }
-
-      return allowed;
-    });
-  }, [options, user]);
-
-  if (!menuOptions?.length && !isAuthenticated) {
+  if (menuOptions.length === 0 && !isAuthenticated) {
     return null;
   }
 
   return (
     <>
-      <NavDropdown title={user?.name || "Options"} id="nav-dropdown">
-        {menuOptions?.map((option) => (
+      {/* The class is the stable hook to find the menu: the id is generated */}
+      <NavDropdown
+        title={user?.name || "Options"}
+        id={dropdownId}
+        className="variamos-header-options"
+      >
+        {menuOptions.map((option) => (
           <NavDropdown.Item
             key={option.title}
             onClick={() => {
               if (option.location.endsWith("#report-bug")) {
-                setShowBugModal(true);
+                openBugModal();
                 return;
               }
               navigate(option.location, {
@@ -150,19 +109,22 @@ export const HeaderOptions: FC<HeaderOptionsProps> = ({ adminApiUrl: propAdminAp
           </NavDropdown.Item>
         ))}
 
-        {isAuthenticated && !!menuOptions?.length && <NavDropdown.Divider />}
+        {isAuthenticated && menuOptions.length > 0 ? (
+          <NavDropdown.Divider />
+        ) : null}
 
-        {isAuthenticated && (
+        {isAuthenticated ? (
           <NavDropdown.Item onClick={logout}>Logout</NavDropdown.Item>
-        )}
+        ) : null}
       </NavDropdown>
 
       <BugFormModal
         show={showBugModal}
         onHide={() => setShowBugModal(false)}
-        onSubmit={handleCreateBugSubmit}
-        categories={categories}
+        onSubmit={(report, file) => void handleCreateBugSubmit(report, file)}
+        categories={BUG_CATEGORIES}
         isSubmitting={isSubmitting}
+        errorMessage={submitError}
       />
     </>
   );

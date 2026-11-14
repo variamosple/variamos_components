@@ -1,4 +1,4 @@
-import { FC } from "react";
+import type { FC } from "react";
 import styles from "./styles.module.css";
 
 export interface FooterProps {
@@ -10,7 +10,7 @@ export const Footer: FC<FooterProps> = ({ version = "" }) => {
     <footer className={`container-fluid ${styles.footer}`}>
       <div className="row copyright">
         <p className="mb-0">
-          {"\u00A9"} Copyright 2023 VariaMos.{version && ` ${version}`}
+          {"\u00A9"} Copyright 2023 VariaMos.{version ? ` ${version}` : null}
         </p>
       </div>
     </footer>

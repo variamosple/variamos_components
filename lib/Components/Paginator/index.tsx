@@ -1,4 +1,4 @@
-import { FC, useMemo } from "react";
+import { type FC, useMemo } from "react";
 import { Pagination } from "react-bootstrap";
 
 export interface PaginatorProps {
@@ -8,7 +8,7 @@ export interface PaginatorProps {
 }
 
 const range = (start: number, end: number) => {
-  const result = [];
+  const result: number[] = [];
   for (let i = start; i <= end; i++) {
     result.push(i);
   }
@@ -25,14 +25,16 @@ export const Paginator: FC<PaginatorProps> = ({
   const pages = useMemo(() => {
     if (currentPage === 1 && totalPages === 1) {
       return [];
-    } else if (currentPage === 1) {
+    }
+    if (currentPage === 1) {
       return range(2, Math.min(totalPages - 1, pageItems + 1));
-    } else if (totalPages - pageItems <= 0) {
+    }
+    if (totalPages - pageItems <= 0) {
       return range(2, totalPages - 1);
     }
 
-    let startPage;
-    let endPage;
+    let startPage: number;
+    let endPage: number;
 
     if (currentPage <= Math.ceil(pageItems / 2)) {
       startPage = 2;

@@ -1,3 +1,4 @@
+import { fieldOf } from "../Common/fieldOf";
 /**
  * Short-lived token used to call the notification service, issued by the
  * admin service to the signed-in user (ADR-0001 of the admin module).
@@ -48,14 +49,14 @@ export function createAccessTokenProvider({
       const sessionToken = getSessionToken();
       const response = await fetchImpl(url, {
         credentials: "include",
-        headers: sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {},
+        headers: sessionToken
+          ? { Authorization: `Bearer ${sessionToken}` }
+          : {},
       });
       if (!response.ok) return null;
-      const body = (await response.json()) as {
-        data?: { token?: unknown; expiresAt?: unknown };
-      };
-      const token = body.data?.token;
-      const expiresAt = Date.parse(String(body.data?.expiresAt));
+      const data = fieldOf(await response.json(), "data");
+      const token = fieldOf(data, "token");
+      const expiresAt = Date.parse(String(fieldOf(data, "expiresAt")));
       if (typeof token !== "string" || Number.isNaN(expiresAt)) return null;
       current = { token, expiresAt };
       return token;
@@ -65,9 +66,9 @@ export function createAccessTokenProvider({
   };
 
   return {
-    async get() {
+    get() {
       if (current && now() < current.expiresAt - refreshMarginMs) {
-        return current.token;
+        return Promise.resolve(current.token);
       }
       pending ??= request().finally(() => {
         pending = null;

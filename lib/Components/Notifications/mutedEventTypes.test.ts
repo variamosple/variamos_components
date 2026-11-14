@@ -29,8 +29,9 @@ describe("muted event types (EV-99)", () => {
   });
 
   it("unmutes a type saved under its former key", () => {
-    expect(toggleMuted(["system_alert", "review_assigned"], "admin_alert"))
-      .toEqual(["review_assigned"]);
+    expect(
+      toggleMuted(["system_alert", "review_assigned"], "admin_alert"),
+    ).toEqual(["review_assigned"]);
   });
 
   it("unmutes a type that has no former key", () => {

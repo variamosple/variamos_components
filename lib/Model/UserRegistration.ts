@@ -5,7 +5,7 @@ export class UserRegistration extends Credentials {
     public name: string,
     email: string,
     password: string,
-    public passwordConfirmation: string
+    public passwordConfirmation: string,
   ) {
     super(email, password);
   }

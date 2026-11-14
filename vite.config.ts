@@ -1,12 +1,13 @@
+import { extname, relative } from "node:path";
+import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
-import { resolve } from "path";
+import { glob } from "glob";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
 import { libInjectCss } from "vite-plugin-lib-inject-css";
 
-import { glob } from "glob";
-import { fileURLToPath } from "node:url";
-import { extname, relative } from "path";
+const fromRoot = (path: string) =>
+  fileURLToPath(new URL(path, import.meta.url));
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -14,7 +15,7 @@ export default defineConfig({
     react(),
     libInjectCss(),
     dts({
-      tsconfigPath: resolve(__dirname, "tsconfig.lib.json"),
+      tsconfigPath: fromRoot("tsconfig.lib.json"),
       include: ["lib"],
       // Tests are not part of the published package
       exclude: ["lib/**/*.test.ts", "lib/**/*.test.tsx"],
@@ -23,13 +24,19 @@ export default defineConfig({
   build: {
     copyPublicDir: false,
     lib: {
-      entry: resolve(__dirname, "lib/main.ts"),
+      entry: fromRoot("lib/main.ts"),
       formats: ["es"],
     },
     rollupOptions: {
       external: (id) => {
-        const isPackage = /^(react|react-dom|react-bootstrap|react-bootstrap-icons)(\/.*)?$/.test(id);
-        const isNodeModule = /\/node_modules\/(react|react-dom|react-bootstrap|react-bootstrap-icons)\//.test(id);
+        const isPackage =
+          /^(react|react-dom|react-bootstrap|react-bootstrap-icons)(\/.*)?$/.test(
+            id,
+          );
+        const isNodeModule =
+          /\/node_modules\/(react|react-dom|react-bootstrap|react-bootstrap-icons)\//.test(
+            id,
+          );
         return isPackage || isNodeModule;
       },
       input: Object.fromEntries(
@@ -45,7 +52,7 @@ export default defineConfig({
             // 2. The absolute path to the entry file
             // lib/nested/foo.ts becomes /project/lib/nested/foo.ts
             fileURLToPath(new URL(file, import.meta.url)),
-          ])
+          ]),
       ),
       output: {
         assetFileNames: "assets/[name][extname]",

@@ -1,5 +1,6 @@
-import { FC, useMemo } from "react";
+import { type FC, useMemo } from "react";
 import { Container, Nav, Navbar } from "react-bootstrap";
+import { isAllowedFor } from "../../Common/isAllowedFor";
 import { useMenu, useRouter, useSession } from "../../Context";
 
 export const SubHeader: FC<unknown> = () => {
@@ -8,46 +9,16 @@ export const SubHeader: FC<unknown> = () => {
   const { user } = useSession();
 
   const subMenuItems = useMemo(() => {
-    const roles = user?.roles || [];
-    const permissions = user?.permissions || [];
-
     if (!subMenu) return [];
 
-    return subMenu.filter((subMenuItem) => {
-      if (
-        !subMenuItem?.allowedRoles?.length &&
-        !subMenuItem?.allowedPermissions?.length
-      ) {
-        return true;
-      }
-
-      let allowed = true;
-
-      if (subMenuItem.allowedRoles) {
-        allowed =
-          allowed &&
-          subMenuItem.allowedRoles.some((permission) =>
-            roles.includes(permission)
-          );
-      }
-
-      if (subMenuItem.allowedPermissions) {
-        allowed =
-          allowed &&
-          subMenuItem.allowedPermissions.some((role) =>
-            permissions.includes(role)
-          );
-      }
-
-      return allowed;
-    });
+    return subMenu.filter((subMenuItem) => isAllowedFor(subMenuItem, user));
   }, [subMenu, user]);
 
   const navigateTo = (route: string) => () => {
     navigate(route);
   };
 
-  if (!subMenuItems.length) return null;
+  if (subMenuItems.length === 0) return null;
 
   return (
     <Navbar className="py-1 shadow-sm bg-white">

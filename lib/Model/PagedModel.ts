@@ -1,3 +1,6 @@
 export class PagedModel {
-  constructor(public pageNumber: number = 1, public pageSize: number = 20) {}
+  constructor(
+    public pageNumber = 1,
+    public pageSize = 20,
+  ) {}
 }

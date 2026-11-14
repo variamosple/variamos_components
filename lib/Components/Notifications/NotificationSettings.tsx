@@ -1,5 +1,6 @@
-import React from "react";
-import { Form, Card, Spinner, Alert } from "react-bootstrap";
+import type React from "react";
+import { useId } from "react";
+import { Alert, Card, Form, Spinner } from "react-bootstrap";
 import { useNotifications } from "../../Context/NotificationContext";
 import {
   isEventMuted,
@@ -9,15 +10,16 @@ import {
 
 export const NotificationSettings: React.FC = () => {
   const { preferences, updatePreferences, isLoading } = useNotifications();
+  const baseId = useId();
 
   const handleChannelToggle = (channel: "emailEnabled" | "inAppEnabled") => {
     if (!preferences) return;
-    updatePreferences({ [channel]: !preferences[channel] });
+    void updatePreferences({ [channel]: !preferences[channel] });
   };
 
   const handleMutedToggle = (eventType: string) => {
     if (!preferences) return;
-    updatePreferences({
+    void updatePreferences({
       mutedEventTypes: toggleMuted(preferences.mutedEventTypes, eventType),
     });
   };
@@ -31,17 +33,21 @@ export const NotificationSettings: React.FC = () => {
   }
 
   if (!preferences) {
-    return <Alert variant="warning">Unable to load notification preferences.</Alert>;
+    return (
+      <Alert variant="warning">Unable to load notification preferences.</Alert>
+    );
   }
 
   return (
     <Card className="border-0 shadow-sm">
       <Card.Body className="p-3">
-        <h6 className="mb-3 text-secondary font-weight-bold">Notification Channels</h6>
+        <h6 className="mb-3 text-secondary font-weight-bold">
+          Notification Channels
+        </h6>
         <Form.Group className="mb-3">
           <Form.Check
             type="switch"
-            id="channel-inapp"
+            id={`${baseId}-channel-inapp`}
             label="In-App Notifications (Real-Time)"
             checked={preferences.inAppEnabled}
             onChange={() => handleChannelToggle("inAppEnabled")}
@@ -49,7 +55,7 @@ export const NotificationSettings: React.FC = () => {
           />
           <Form.Check
             type="switch"
-            id="channel-email"
+            id={`${baseId}-channel-email`}
             label="Email Alerts"
             checked={preferences.emailEnabled}
             onChange={() => handleChannelToggle("emailEnabled")}
@@ -58,16 +64,23 @@ export const NotificationSettings: React.FC = () => {
 
         <hr />
 
-        <h6 className="mb-3 text-secondary font-weight-bold">Mute Event Types</h6>
-        <p className="text-muted small mb-3">Check events you do NOT want to receive notifications for.</p>
+        <h6 className="mb-3 text-secondary font-weight-bold">
+          Mute Event Types
+        </h6>
+        <p className="text-muted small mb-3">
+          Check events you do NOT want to receive notifications for.
+        </p>
         <Form.Group>
           {MUTABLE_EVENT_TYPES.map((event) => {
-            const isMuted = isEventMuted(preferences.mutedEventTypes, event.key);
+            const isMuted = isEventMuted(
+              preferences.mutedEventTypes,
+              event.key,
+            );
             return (
               <Form.Check
                 type="checkbox"
                 key={event.key}
-                id={`mute-${event.key}`}
+                id={`${baseId}-mute-${event.key}`}
                 label={event.label}
                 checked={isMuted}
                 onChange={() => handleMutedToggle(event.key)}

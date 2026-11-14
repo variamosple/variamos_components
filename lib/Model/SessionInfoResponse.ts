@@ -1,4 +1,4 @@
-import { SessionUser } from "./SessionUser";
+import type { SessionUser } from "./SessionUser";
 
 export interface SessionInfoResponse {
   user: SessionUser;

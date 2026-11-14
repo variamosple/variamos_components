@@ -1,4 +1,4 @@
-import { NavigationTarget } from "./Router";
+import type { NavigationTarget } from "./Router";
 
 export interface MenuItemBase {
   title: string;

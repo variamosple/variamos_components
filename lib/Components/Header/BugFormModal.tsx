@@ -1,12 +1,23 @@
-import { type ChangeEvent, type FC, useEffect, useState, FormEvent } from "react";
-import { Button, Form, Modal } from "react-bootstrap";
+import {
+  type ChangeEvent,
+  type FC,
+  type SubmitEvent,
+  useEffect,
+  useState,
+} from "react";
+import { Alert, Button, Form, Modal } from "react-bootstrap";
 
 interface BugFormModalProps {
   show: boolean;
   onHide: () => void;
-  onSubmit: (data: { title: string; description: string; category: string }, file?: File) => void;
+  onSubmit: (
+    data: { title: string; description: string; category: string },
+    file?: File,
+  ) => void;
   categories: string[];
   isSubmitting: boolean;
+  /** Why the last submission failed, shown above the form. */
+  errorMessage?: string | null;
 }
 
 export const BugFormModal: FC<BugFormModalProps> = ({
@@ -15,6 +26,7 @@ export const BugFormModal: FC<BugFormModalProps> = ({
   onSubmit,
   categories,
   isSubmitting,
+  errorMessage,
 }) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -32,7 +44,7 @@ export const BugFormModal: FC<BugFormModalProps> = ({
     }
   }, [show, categories]);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = event.currentTarget;
     if (form.checkValidity() === false) {
@@ -41,7 +53,7 @@ export const BugFormModal: FC<BugFormModalProps> = ({
       return;
     }
 
-    onSubmit({ title, description, category }, selectedFile || undefined);
+    onSubmit({ title, description, category }, selectedFile ?? undefined);
   };
 
   return (
@@ -58,6 +70,11 @@ export const BugFormModal: FC<BugFormModalProps> = ({
 
       <Form noValidate validated={validated} onSubmit={handleSubmit}>
         <Modal.Body>
+          {errorMessage ? (
+            <Alert variant="danger" role="alert">
+              {errorMessage}
+            </Alert>
+          ) : null}
           <Form.Group className="mb-3" controlId="bugTitle">
             <Form.Label>Title *</Form.Label>
             <Form.Control
