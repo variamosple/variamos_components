@@ -1,6 +1,7 @@
 import React, { ReactNode, useEffect } from "react";
 import { Spinner } from "react-bootstrap";
 import { useRouter, useSession } from "../../Context";
+import { addressWithoutToken } from "./addressWithoutToken";
 
 interface AuthWrapperProps {
   redirectPath: string;
@@ -31,12 +32,10 @@ export const AuthWrapper: React.FC<AuthWrapperProps> = ({
   }, [isAuthenticated, isLoading, redirectPath, navigate, isRedirecting]);
 
   useEffect(() => {
-    const url = new URL(window.location.href);
-
-    if (url.searchParams.has("authToken")) {
-      localStorage.setItem("authToken", url.searchParams.get("authToken")!);
-      url.searchParams.delete("authToken");
-      window.history.replaceState({}, "", url);
+    // Removed from the address, never stored (EV-75)
+    const address = addressWithoutToken(window.location.href);
+    if (address) {
+      window.history.replaceState({}, "", address);
     }
   }, []);
 
