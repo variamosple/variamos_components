@@ -86,10 +86,20 @@ export const HeaderOptions: FC<HeaderOptionsProps> = ({
   return (
     <>
       {/* The class is the stable hook to find the menu: the id is generated */}
+      {/* Opens towards the left, so that it stays in a narrow window */}
       <NavDropdown
-        title={user?.name || "Options"}
+        title={
+          <span
+            className="d-inline-block text-truncate align-bottom"
+            style={{ maxWidth: "10rem" }}
+            title={user?.name}
+          >
+            {user?.name || "Options"}
+          </span>
+        }
         id={dropdownId}
         className="variamos-header-options"
+        align="end"
       >
         {menuOptions.map((option) => (
           <NavDropdown.Item

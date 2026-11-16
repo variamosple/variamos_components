@@ -1,4 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
+import example from "./notification-realtime.example.json" with {
+  type: "json",
+};
 import {
   createNotificationApi,
   notificationItemOf,
@@ -21,7 +24,6 @@ const json = (body: unknown, status = 200) =>
 const apiWith = (fetchImpl: typeof fetch) =>
   createNotificationApi({
     apiUrl: "https://notifications.test",
-    recipientId: "u-1",
     getHeaders: () => Promise.resolve({ Authorization: "Bearer t" }),
     fetchImpl,
   });
@@ -36,6 +38,13 @@ describe("notificationItemOf", () => {
       isRead: false,
       createdAt: "2026-11-14T10:00:00.000Z",
     });
+  });
+
+  // CA-NT-18: the same example is kept in variamos_ms_notifications
+  // (src/Infrastructure/WebSockets/notification-realtime.example.json), whose
+  // test checks that the service emits it. Change both copies together.
+  it("reads the real-time message of the service example without a loss", () => {
+    expect(notificationItemOf(example)).toEqual(example);
   });
 
   it("gives empty variables when the service sends none", () => {
@@ -87,7 +96,7 @@ describe("createNotificationApi", () => {
     expect(items?.map(({ id }) => id)).toEqual(["n-1"]);
     const [url, init] = fetchImpl.mock.calls[0] ?? [];
     expect(url).toBe(
-      "https://notifications.test/notifications?recipientId=u-1&page=2&limit=10&folder=trash",
+      "https://notifications.test/notifications?page=2&limit=10&folder=trash",
     );
     expect(init?.headers).toEqual({ Authorization: "Bearer t" });
   });
@@ -113,8 +122,8 @@ describe("createNotificationApi", () => {
   });
 
   it.each([
-    ["markAllAsRead", "/notifications/read-all?recipientId=u-1", "PATCH"],
-    ["emptyTrash", "/notifications/trash?recipientId=u-1", "DELETE"],
+    ["markAllAsRead", "/notifications/read-all", "PATCH"],
+    ["emptyTrash", "/notifications/trash", "DELETE"],
   ] as const)("%s calls %s with %s", async (action, path, method) => {
     const fetchImpl = vi.fn<typeof fetch>(() => json({}, 500));
 
@@ -137,5 +146,25 @@ describe("createNotificationApi", () => {
       apiWith(fetchImpl).updatePreferences({ emailEnabled: false }),
     ).resolves.toEqual(saved);
     expect(fetchImpl.mock.calls[0]?.[1]?.body).toBe('{"emailEnabled":false}');
+  });
+
+  it("names the recipient in no address: the service reads the token", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(() => json({}));
+    const api = apiWith(fetchImpl);
+
+    await api.list({ folder: "inbox", page: 1, limit: 10 });
+    await api.markAsRead("n-1");
+    await api.markAllAsRead();
+    await api.emptyTrash();
+    await api.remove("n-1");
+    await api.preferences();
+    await api.updatePreferences({ emailEnabled: false });
+
+    const urls = fetchImpl.mock.calls.map(([url]) => String(url));
+    expect(urls).toHaveLength(7);
+    expect(urls).toContain(
+      "https://notifications.test/notifications/preferences",
+    );
+    for (const url of urls) expect(url).not.toMatch(/recipientId|userId/);
   });
 });

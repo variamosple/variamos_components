@@ -18,6 +18,7 @@ import {
   notificationItemOf,
   type UserNotificationPreferences,
 } from "./notificationApi";
+import { notificationSocketOptions } from "./notificationSocket";
 import { useSession } from "./SessionContext";
 import {
   useNotificationChanges,
@@ -95,7 +96,6 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
       userId
         ? createNotificationApi({
             apiUrl,
-            recipientId: userId,
             getHeaders: headersFrom(tokenProvider),
           })
         : null,
@@ -117,17 +117,7 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
       return;
     }
 
-    // The access token is read again on every (re)connection; the userId
-    // query stays during the transition, as a fallback in observe mode.
-    const socket = io(apiUrl, {
-      auth: (callback) => {
-        void (tokenProvider?.get() ?? Promise.resolve(null)).then((token) =>
-          callback(token ? { token } : {}),
-        );
-      },
-      query: { userId },
-      transports: ["websocket"],
-    });
+    const socket = io(apiUrl, notificationSocketOptions(tokenProvider));
 
     socket.on("notification", (payload: unknown) => {
       const item = notificationItemOf(payload);
