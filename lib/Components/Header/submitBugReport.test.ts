@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { BUG_COMPONENTS } from "./bugComponents";
 import { bugReportUrl, submitBugReport } from "./submitBugReport";
 
 const report = { title: "Crash", description: "It fails", category: "Model" };
@@ -43,6 +44,22 @@ describe("submitBugReport", () => {
     expect(form.get("reporterEmail")).toBe("someone@example.com");
   });
 
+  it("sends the component chosen, and none when it is not specified", async () => {
+    const formOf = async (component: string) => {
+      const fetchImpl = answer(true, { data: {} });
+      await submitBugReport({ ...report, component }, undefined, {
+        adminApiUrl: "/v1",
+        fetchImpl,
+      });
+      const form = fetchImpl.mock.calls[0]?.[1]?.body;
+      if (!(form instanceof FormData)) throw new Error("No form was sent");
+      return form;
+    };
+
+    expect((await formOf("model")).get("component")).toBe("model");
+    expect((await formOf("")).has("component")).toBe(false);
+  });
+
   it("gives the message of the server when it refuses", async () => {
     const result = await submitBugReport(report, undefined, {
       adminApiUrl: "/v1",
@@ -70,5 +87,18 @@ describe("submitBugReport", () => {
     expect(result).toBe("Failed to submit bug. Please try again.");
     expect(errors).toHaveBeenCalledOnce();
     errors.mockRestore();
+  });
+});
+
+describe("BUG_COMPONENTS", () => {
+  // The admin service refuses a value outside its list (BugComponent.ts)
+  it("offers the values the admin service accepts", () => {
+    expect(BUG_COMPONENTS.map(({ value }) => value)).toEqual([
+      "language",
+      "model",
+      "microservice",
+      "admin",
+      "other",
+    ]);
   });
 });

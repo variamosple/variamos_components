@@ -23,7 +23,7 @@ export const SubHeader: FC<unknown> = () => {
   return (
     <Navbar className="py-1 shadow-sm bg-white">
       <Container>
-        <Nav className="d-flex justify-content-center w-100 gap-3">
+        <Nav className="d-flex flex-wrap justify-content-center w-100 column-gap-3 row-gap-1">
           {subMenuItems.map((item) => (
             <Nav.Link
               as="button"

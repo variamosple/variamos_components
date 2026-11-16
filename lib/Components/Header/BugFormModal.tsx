@@ -6,15 +6,14 @@ import {
   useState,
 } from "react";
 import { Alert, Button, Form, Modal } from "react-bootstrap";
+import { BUG_COMPONENTS } from "./bugComponents";
 import { bugFormErrors, TITLE_MAX_LENGTH } from "./bugFormErrors";
+import type { BugReport } from "./submitBugReport";
 
 interface BugFormModalProps {
   show: boolean;
   onHide: () => void;
-  onSubmit: (
-    data: { title: string; description: string; category: string },
-    file?: File,
-  ) => void;
+  onSubmit: (data: BugReport, file?: File) => void;
   categories: string[];
   isSubmitting: boolean;
   /** Why the last submission failed, shown above the form. */
@@ -32,6 +31,7 @@ export const BugFormModal: FC<BugFormModalProps> = ({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
+  const [component, setComponent] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   // Messages appear after the first submission attempt only
   const [submitted, setSubmitted] = useState(false);
@@ -42,6 +42,7 @@ export const BugFormModal: FC<BugFormModalProps> = ({
       setTitle("");
       setDescription("");
       setCategory(categories[0] || "Other");
+      setComponent("");
       setSelectedFile(null);
       setSubmitted(false);
     }
@@ -56,7 +57,10 @@ export const BugFormModal: FC<BugFormModalProps> = ({
       return;
     }
 
-    onSubmit({ title, description, category }, selectedFile ?? undefined);
+    onSubmit(
+      { title, description, category, component },
+      selectedFile ?? undefined,
+    );
   };
 
   return (
@@ -111,7 +115,7 @@ export const BugFormModal: FC<BugFormModalProps> = ({
           </Form.Group>
 
           <div className="row">
-            <div className="col-md-12">
+            <div className="col-md-6">
               <Form.Group className="mb-3" controlId="bugCategory">
                 <Form.Label>Category *</Form.Label>
                 <Form.Select
@@ -122,6 +126,22 @@ export const BugFormModal: FC<BugFormModalProps> = ({
                   {categories.map((cat) => (
                     <option key={cat} value={cat}>
                       {cat}
+                    </option>
+                  ))}
+                </Form.Select>
+              </Form.Group>
+            </div>
+            <div className="col-md-6">
+              <Form.Group className="mb-3" controlId="bugComponent">
+                <Form.Label>Component (Optional)</Form.Label>
+                <Form.Select
+                  value={component}
+                  onChange={(e) => setComponent(e.target.value)}
+                >
+                  <option value="">Not specified</option>
+                  {BUG_COMPONENTS.map(({ value, label }) => (
+                    <option key={value} value={value}>
+                      {label}
                     </option>
                   ))}
                 </Form.Select>

@@ -4,6 +4,8 @@ export interface BugReport {
   title: string;
   description: string;
   category: string;
+  /** One of BUG_COMPONENTS, or empty when the reporter does not know. */
+  component?: string;
 }
 
 export interface BugReportSender {
@@ -29,6 +31,7 @@ export async function submitBugReport(
   formData.append("description", report.description);
   formData.append("priority", "medium");
   formData.append("category", report.category);
+  if (report.component) formData.append("component", report.component);
   if (reporterEmail) formData.append("reporterEmail", reporterEmail);
   if (file) formData.append("file", file);
 

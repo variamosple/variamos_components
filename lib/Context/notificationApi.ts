@@ -69,7 +69,6 @@ export function preferencesOf(
 
 export interface NotificationApiOptions {
   apiUrl: string;
-  recipientId: string;
   getHeaders: () => Promise<Record<string, string>>;
   fetchImpl?: typeof fetch;
 }
@@ -86,14 +85,11 @@ export interface NotificationPage {
  */
 export function createNotificationApi({
   apiUrl,
-  recipientId,
   getHeaders,
   fetchImpl = fetch,
 }: NotificationApiOptions) {
-  // The recipientId parameters stay during the transition: the service
-  // ignores them once the access token is verified.
-  const recipient = `recipientId=${recipientId}`;
-
+  // The recipient is the user of the access token: the service reads it
+  // there, never from the address
   const send = async (path: string, method?: string, body?: string) => {
     const response = await fetchImpl(`${apiUrl}/notifications${path}`, {
       method,
@@ -112,9 +108,7 @@ export function createNotificationApi({
       limit,
     }: NotificationPage): Promise<NotificationItem[] | null> {
       const data = await readJson(
-        await send(
-          `?${recipient}&page=${page}&limit=${limit}&folder=${folder}`,
-        ),
+        await send(`?page=${page}&limit=${limit}&folder=${folder}`),
       );
       if (!Array.isArray(data)) return null;
       return data
@@ -125,29 +119,23 @@ export function createNotificationApi({
       return (await send(`/${id}/read`, "PATCH")) !== null;
     },
     async markAllAsRead(): Promise<boolean> {
-      return (await send(`/read-all?${recipient}`, "PATCH")) !== null;
+      return (await send("/read-all", "PATCH")) !== null;
     },
     async emptyTrash(): Promise<boolean> {
-      return (await send(`/trash?${recipient}`, "DELETE")) !== null;
+      return (await send("/trash", "DELETE")) !== null;
     },
     async remove(id: string): Promise<boolean> {
       return (await send(`/${id}`, "DELETE")) !== null;
     },
     async preferences(): Promise<UserNotificationPreferences | null> {
-      return preferencesOf(
-        await readJson(await send(`/preferences?${recipient}`)),
-      );
+      return preferencesOf(await readJson(await send("/preferences")));
     },
     async updatePreferences(
       updates: Partial<UserNotificationPreferences>,
     ): Promise<UserNotificationPreferences | null> {
       return preferencesOf(
         await readJson(
-          await send(
-            `/preferences?${recipient}`,
-            "PATCH",
-            JSON.stringify(updates),
-          ),
+          await send("/preferences", "PATCH", JSON.stringify(updates)),
         ),
       );
     },

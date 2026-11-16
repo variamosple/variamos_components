@@ -1,0 +1,5 @@
+/* Below the fold width, Bootstrap lays the menus of a navbar in the flow.
+   The account menu stays outside the folded menu, so it keeps floating. */
+.accountNav:global(.navbar-nav) :global(.dropdown-menu) {
+  position: absolute;
+}
