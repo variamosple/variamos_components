@@ -18,6 +18,8 @@ The user menu of the header has the class `variamos-header-options`; its id is g
 
 The session lives in the httpOnly `authToken` cookie of the admin service: requests must send it (`credentials: "include"`, or `withCredentials` with axios). Since 0.4.0 the library never keeps the token in `localStorage`, and `SessionProvider` removes the copy that older versions kept there; a front end should not add an `Authorization` header from that storage.
 
+Only the admin ends a session. `SessionProvider` checks `GET /auth/session-info` once a minute and clears the user only when the admin answers 401 or 403. Since 0.7.0, any other failure (no network, a 5xx while the admin restarts, a proxy error page, an error code that is not a number) keeps the user and the open page: `useSession().isServerUnreachable` becomes `true`, the check is tried again after 5 s, 10 s, 20 s, 40 s, then once a minute, and `AuthWrapper` shows a banner instead of sending the user to the sign-in page. `getSessionInfo` should therefore resolve with the status code of the admin as `errorCode` on 401 and 403; whatever it returns otherwise is read as "the admin did not answer".
+
 ## Development
 
 Requires Node 26 (`.nvmrc`, `.mise.toml`). `npm install` sets up the Git hooks: Biome and cspell on the staged files before a commit, the conventional commit format, and typecheck, lint and tests before a push.

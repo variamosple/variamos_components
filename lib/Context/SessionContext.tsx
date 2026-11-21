@@ -4,9 +4,7 @@ import {
   type ReactNode,
   useContext,
   useEffect,
-  useState,
 } from "react";
-import { Events } from "../Common";
 import { usePageVisibility } from "../Hooks/usePageVisibility";
 import type {
   Credentials,
@@ -16,12 +14,23 @@ import type {
   singInResponse,
   UserRegistration,
 } from "../Model";
+import { readSessionAnswer } from "./sessionAnswer";
 import { forgetStoredSessionToken } from "./storedSessionToken";
+import {
+  publishNavigation,
+  UNAVAILABLE_ANSWER,
+  useWatchedSession,
+} from "./useWatchedSession";
 
 interface SessionContextType {
   user: SessionUser | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  /**
+   * The admin did not answer the last session check (network, restart,
+   * proxy error): the user is kept and the check is tried again.
+   */
+  isServerUnreachable: boolean;
   signIn: (credentials: Credentials) => Promise<ResponseModel<singInResponse>>;
   signInAsGuest: () => Promise<ResponseModel<singInResponse>>;
   signUp: (
@@ -33,31 +42,6 @@ interface SessionContextType {
 const SessionContext = createContext<SessionContextType | undefined>(undefined);
 
 const guestIdKey = "guestId";
-
-const redirect = (location?: string) => {
-  if (!location) {
-    return;
-  }
-
-  Events.publish("variamosNavigate", location);
-};
-
-/**
- * Applies a session-info answer: the user and the redirection.
- * Returns false when the answer is an error, after clearing the user.
- */
-function applySessionInfo(
-  result: ResponseModel<SessionInfoResponse>,
-  setUser: (user: SessionUser | null) => void,
-): boolean {
-  if (result?.errorCode) {
-    setUser(null);
-    return false;
-  }
-  setUser(result?.data?.user ?? null);
-  redirect(result?.data?.redirect);
-  return true;
-}
 
 const SIGN_IN_ERROR = "Sign in error.";
 
@@ -86,10 +70,16 @@ export const SessionProvider: FC<SessionProviderProps> = ({
   requestLogout,
   children,
 }) => {
-  const [user, setUser] = useState<SessionUser | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const isAuthenticated = user !== null;
   const isPageActive = usePageVisibility();
+  const {
+    user,
+    isLoading,
+    setIsLoading,
+    isServerUnreachable,
+    applyAnswer,
+    clearSession,
+  } = useWatchedSession(getSessionInfo, isPageActive);
+  const isAuthenticated = user !== null;
 
   // The session lives in the admin cookie: a token kept by an older
   // version is removed
@@ -97,44 +87,22 @@ export const SessionProvider: FC<SessionProviderProps> = ({
     forgetStoredSessionToken();
   }, []);
 
-  useEffect(() => {
-    setIsLoading(true);
-    void getSessionInfo()
-      .then((result) => applySessionInfo(result, setUser))
-      .catch(() => {
-        setUser(null);
-      })
-      .finally(() => setIsLoading(false));
-  }, [getSessionInfo]);
-
-  useEffect(() => {
-    if (!(isAuthenticated && isPageActive)) return;
-    const requestSessionInfo = () => {
-      void getSessionInfo()
-        .then((result) => applySessionInfo(result, setUser))
-        .catch(() => {
-          setUser(null);
-        });
-    };
-    requestSessionInfo();
-    const interval = setInterval(requestSessionInfo, 60_000);
-    return () => clearInterval(interval);
-  }, [isAuthenticated, isPageActive, getSessionInfo]);
-
   // After a sign in, the session is loaded; its error goes on the answer
   const completeSignIn = (response: ResponseModel<singInResponse>) =>
     getSessionInfo()
       .then((result) => {
-        if (!applySessionInfo(result, setUser)) {
+        const answer = readSessionAnswer(result);
+        applyAnswer(answer);
+        if (answer.kind !== "signed-in") {
           response.withError(
-            result.errorCode ?? 500,
-            result.message ?? SIGN_IN_ERROR,
+            result?.errorCode || 500,
+            result?.message ?? SIGN_IN_ERROR,
           );
         }
         return response;
       })
       .catch(() => {
-        setUser(null);
+        applyAnswer(UNAVAILABLE_ANSWER);
         return response.withError(500, SIGN_IN_ERROR);
       });
 
@@ -175,11 +143,9 @@ export const SessionProvider: FC<SessionProviderProps> = ({
   const logout = () => {
     void requestLogout().then(() => {
       forgetStoredSessionToken();
-      redirect(loginUrl);
+      publishNavigation(loginUrl);
 
-      setTimeout(() => {
-        setUser(null);
-      }, 200);
+      setTimeout(clearSession, 200);
     });
   };
 
@@ -188,6 +154,7 @@ export const SessionProvider: FC<SessionProviderProps> = ({
       value={{
         user,
         isAuthenticated,
+        isServerUnreachable,
         logout,
         signUp,
         signIn,
