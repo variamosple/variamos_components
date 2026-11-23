@@ -3,3 +3,15 @@
 .accountNav:global(.navbar-nav) :global(.dropdown-menu) {
   position: absolute;
 }
+
+/* Shown above the navbar once it has the focus (ADM-N15) */
+.skipLink:focus {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 1080;
+  padding: 0.5rem 1rem;
+  background: var(--bs-light, #f8f9fa);
+  color: var(--bs-dark, #212529);
+  border-radius: 0.25rem;
+}
