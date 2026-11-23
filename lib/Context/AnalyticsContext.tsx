@@ -1,4 +1,10 @@
-import { createContext, type FC, type ReactNode, useEffect } from "react";
+import {
+  createContext,
+  type FC,
+  type ReactNode,
+  useEffect,
+  useLayoutEffect,
+} from "react";
 
 import { Events } from "../Common";
 import { useDebouncedValue } from "../Hooks/useDebouncedValue";
@@ -19,7 +25,10 @@ export const AnalyticsProvider: FC<AnalyticsProviderProps> = ({
 }) => {
   const [pageId, setPageId] = useDebouncedValue<string | null>(null, 10_000);
 
-  useEffect(() => {
+  // Listens before any page publishes its visit: the effects of the
+  // children run before those of the provider, and a page rendered with it
+  // was never recorded. Layout effects all run before the other effects.
+  useLayoutEffect(() => {
     const onPageVisit = (event: CustomEvent<{ id: string }>) => {
       setPageId(event.detail.id);
     };

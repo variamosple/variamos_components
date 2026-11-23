@@ -1,5 +1,5 @@
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { Button, Nav, Offcanvas, Spinner } from "react-bootstrap";
 import { ArrowLeft, CheckAll, Gear, Inbox, Trash } from "react-bootstrap-icons";
 import {
@@ -83,6 +83,8 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
 
   const [activeFolder, setActiveFolder] = useState<Folder>("inbox");
   const [showSettings, setShowSettings] = useState<boolean>(false);
+  // The drawer is announced by its title
+  const titleId = useId();
 
   // Reload notifications whenever the active folder or drawer visibility changes
   useEffect(() => {
@@ -97,6 +99,7 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
       onHide={onClose}
       placement="end"
       className="text-dark"
+      aria-labelledby={titleId}
     >
       <Offcanvas.Header closeButton className="border-bottom">
         <Offcanvas.Title className="d-flex align-items-center w-100">
@@ -110,11 +113,11 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
               >
                 <ArrowLeft size={20} />
               </Button>
-              <span>Settings</span>
+              <span id={titleId}>Settings</span>
             </>
           ) : (
             <div className="d-flex justify-content-between align-items-center w-100 me-3">
-              <span>Notifications</span>
+              <span id={titleId}>Notifications</span>
               <Button
                 variant="link"
                 className="p-0 text-secondary"
