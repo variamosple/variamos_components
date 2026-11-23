@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { extname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import react from "@vitejs/plugin-react";
@@ -63,6 +64,33 @@ export default defineConfig({
           react: "React",
           "react-dom": "ReactDOM",
         },
+      },
+    },
+  },
+  test: {
+    // The components run in a browser: the tests render them in jsdom
+    // (ADM-N10)
+    environment: "jsdom",
+    setupFiles: ["./vitest.setup.ts"],
+    // Since Node 25, Node has its own localStorage, undefined without a
+    // storage file, and Vitest keeps it instead of the one of jsdom
+    execArgv: ["--no-experimental-webstorage"],
+    unstubGlobals: true,
+    unstubEnvs: true,
+    coverage: {
+      provider: "v8",
+      // Every file of the library, tested or not
+      include: ["lib/**/*.{ts,tsx}"],
+      exclude: ["lib/**/*.d.ts", "lib/**/*.test.{ts,tsx}", "lib/**/index.ts"],
+      // A summary in the terminal: no report file to keep out of git
+      reporter: ["text-summary"],
+      // Just under the measure of 2026-11-23 (88.44 / 81.3 / 89.12 / 89.57).
+      // Raise them, never lower them.
+      thresholds: {
+        statements: 87,
+        branches: 80,
+        functions: 88,
+        lines: 88,
       },
     },
   },

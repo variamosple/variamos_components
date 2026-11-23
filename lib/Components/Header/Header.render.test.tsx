@@ -1,0 +1,182 @@
+import { screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  axeViolations,
+  renderWithContexts,
+  routerOf,
+  userOf,
+} from "../../../test/renderWithContexts";
+import { Events } from "../../Common";
+import { ResponseModel } from "../../Model";
+import { Header } from "./index";
+
+// The notification provider opens a socket once signed in
+vi.mock("socket.io-client", () => ({
+  io: () => ({ on: vi.fn(), disconnect: vi.fn() }),
+}));
+
+const emptyAnswer = () => Promise.resolve(Response.json({ data: [] }));
+
+describe("Header", () => {
+  beforeEach(() => {
+    vi.stubGlobal("fetch", vi.fn(emptyAnswer));
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("offers to sign in when no one is signed in", async () => {
+    const router = routerOf();
+    renderWithContexts(<Header signInUrl="/login" />, { router });
+
+    const signIn = await screen.findByRole("button", { name: "Sign In" });
+    expect(
+      screen.queryByRole("button", { name: "Notifications" }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(signIn);
+    expect(router.navigate).toHaveBeenCalledWith("/login", {
+      target: "_self",
+    });
+  });
+
+  it("shows the menu, the bell and the account of a signed-in user", async () => {
+    const user = userOf();
+    renderWithContexts(<Header signInUrl="/login" />, {
+      user,
+      notificationsUrl: "https://notifications.example.test",
+      menu: {
+        items: [
+          { title: "Projects", type: "location", location: "/projects" },
+          {
+            title: "Admin",
+            type: "dropdown",
+            children: [{ title: "Users", location: "/users" }],
+          },
+        ],
+      },
+    });
+
+    expect(await screen.findByText(user.name)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Notifications" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Projects" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Admin" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Sign In" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("signs out from the account menu", async () => {
+    const user = userOf();
+    const requestLogout = vi.fn(() =>
+      Promise.resolve(new ResponseModel<void>()),
+    );
+    renderWithContexts(<Header signInUrl="/login" />, {
+      user,
+      requestLogout,
+      notificationsUrl: "https://notifications.example.test",
+    });
+
+    await userEvent.click(await screen.findByText(user.name));
+    await userEvent.click(screen.getByRole("button", { name: "Logout" }));
+
+    expect(requestLogout).toHaveBeenCalledWith();
+  });
+
+  it("opens the bug form from its menu option and from the event", async () => {
+    const user = userOf();
+    renderWithContexts(<Header signInUrl="/login" />, {
+      user,
+      notificationsUrl: "https://notifications.example.test",
+      menu: {
+        options: [{ title: "Report a bug", location: "/#report-bug" }],
+      },
+    });
+
+    await userEvent.click(await screen.findByText(user.name));
+    await userEvent.click(screen.getByRole("button", { name: "Report a bug" }));
+    const form = await screen.findByRole("dialog");
+    expect(within(form).getByText("Report a New Bug")).toBeInTheDocument();
+
+    await userEvent.click(within(form).getByRole("button", { name: "Cancel" }));
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+
+    Events.publish("openReportBugModal", {});
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("goes home from the logo and to the content from the skip link", async () => {
+    const router = routerOf();
+    renderWithContexts(
+      <>
+        <Header signInUrl="/login" logoUrl="/logo.svg" logoAlt="VariaMos" />
+        <main id="main-content" tabIndex={-1}>
+          Page
+        </main>
+      </>,
+      { router },
+    );
+    await screen.findByRole("button", { name: "Sign In" });
+
+    await userEvent.click(screen.getByRole("link", { name: "VariaMos" }));
+    expect(router.navigate).toHaveBeenCalledWith("/");
+
+    await userEvent.click(
+      screen.getByRole("link", { name: "Skip to main content" }),
+    );
+    expect(screen.getByRole("main")).toHaveFocus();
+  });
+
+  it("shows the sub-menu entries the user may open", async () => {
+    const router = routerOf();
+    const user = userOf({ permissions: ["roles::query"] });
+    renderWithContexts(<Header signInUrl="/login" />, {
+      user,
+      router,
+      notificationsUrl: "https://notifications.example.test",
+      menu: {
+        subMenu: [
+          { title: "Roles", location: "/roles" },
+          {
+            title: "Metrics",
+            location: "/metrics",
+            allowedPermissions: ["metrics::query"],
+          },
+        ],
+      },
+    });
+    await screen.findByText(user.name);
+
+    expect(
+      screen.queryByRole("button", { name: "Metrics" }),
+    ).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Roles" }));
+    expect(router.navigate).toHaveBeenCalledWith("/roles");
+  });
+
+  it("has no accessibility violation, signed out or signed in", async () => {
+    const signedOut = renderWithContexts(<Header signInUrl="/login" />);
+    await screen.findByRole("button", { name: "Sign In" });
+    expect(await axeViolations(signedOut.container)).toEqual([]);
+    signedOut.unmount();
+
+    const user = userOf();
+    const signedIn = renderWithContexts(<Header signInUrl="/login" />, {
+      user,
+      notificationsUrl: "https://notifications.example.test",
+      menu: {
+        items: [{ title: "Projects", type: "location", location: "/p" }],
+      },
+    });
+    await screen.findByText(user.name);
+    expect(await axeViolations(signedIn.container)).toEqual([]);
+  });
+});

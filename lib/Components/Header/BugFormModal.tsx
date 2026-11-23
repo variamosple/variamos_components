@@ -3,6 +3,7 @@ import {
   type FC,
   type SubmitEvent,
   useEffect,
+  useId,
   useState,
 } from "react";
 import { Alert, Button, Form, Modal } from "react-bootstrap";
@@ -35,6 +36,8 @@ export const BugFormModal: FC<BugFormModalProps> = ({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   // Messages appear after the first submission attempt only
   const [submitted, setSubmitted] = useState(false);
+  // The dialog is announced by its title
+  const titleId = useId();
   const errors = submitted ? bugFormErrors({ title, description }) : {};
 
   useEffect(() => {
@@ -70,9 +73,10 @@ export const BugFormModal: FC<BugFormModalProps> = ({
       backdrop="static"
       keyboard={false}
       centered
+      aria-labelledby={titleId}
     >
       <Modal.Header closeButton>
-        <Modal.Title>Report a New Bug</Modal.Title>
+        <Modal.Title id={titleId}>Report a New Bug</Modal.Title>
       </Modal.Header>
 
       <Form noValidate onSubmit={handleSubmit}>
