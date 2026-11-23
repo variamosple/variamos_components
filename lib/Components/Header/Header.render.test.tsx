@@ -9,6 +9,7 @@ import {
 } from "../../../test/renderWithContexts";
 import { Events } from "../../Common";
 import { ResponseModel } from "../../Model";
+import { LOGOUT_FAILED } from "./HeaderOptions";
 import { Header } from "./index";
 
 // The notification provider opens a socket once signed in
@@ -89,6 +90,23 @@ describe("Header", () => {
     expect(requestLogout).toHaveBeenCalledWith();
   });
 
+  it("says when the sign out failed", async () => {
+    const user = userOf();
+    renderWithContexts(<Header signInUrl="/login" />, {
+      user,
+      requestLogout: () =>
+        Promise.resolve(new ResponseModel<void>(undefined, 500, "Down")),
+      notificationsUrl: "https://notifications.example.test",
+    });
+
+    await userEvent.click(await screen.findByText(user.name));
+    await userEvent.click(screen.getByRole("button", { name: "Logout" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(LOGOUT_FAILED);
+    await userEvent.click(screen.getByRole("button", { name: "Close alert" }));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("opens the bug form from its menu option and from the event", async () => {
     const user = userOf();
     renderWithContexts(<Header signInUrl="/login" />, {
@@ -112,6 +130,53 @@ describe("Header", () => {
     Events.publish("openReportBugModal", {});
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
   });
+
+  it.each([
+    [undefined, "/bugs"],
+    [
+      "https://app.example.test/variamos_ms_admin/v1",
+      "https://app.example.test/variamos_ms_admin/bugs",
+    ],
+  ])(
+    "sends a bug report next to the admin API %s",
+    async (adminApiUrl, address) => {
+      const user = userOf();
+      renderWithContexts(
+        <Header signInUrl="/login" adminApiUrl={adminApiUrl} />,
+        {
+          user,
+          notificationsUrl: "https://notifications.example.test",
+        },
+      );
+      await screen.findByText(user.name);
+
+      Events.publish("openReportBugModal", {});
+      const form = await screen.findByRole("dialog", {
+        name: "Report a New Bug",
+      });
+      await userEvent.type(
+        within(form).getByLabelText("Title *"),
+        "Save fails",
+      );
+      await userEvent.type(
+        within(form).getByLabelText("Description *"),
+        "Nothing happens on save.",
+      );
+      await userEvent.click(
+        within(form).getByRole("button", { name: "Report Bug" }),
+      );
+
+      await waitFor(() =>
+        expect(fetch).toHaveBeenCalledWith(
+          address,
+          expect.objectContaining({ method: "POST" }),
+        ),
+      );
+      await waitFor(() =>
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+      );
+    },
+  );
 
   it("goes home from the logo and to the content from the skip link", async () => {
     const router = routerOf();

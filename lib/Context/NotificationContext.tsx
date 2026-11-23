@@ -5,8 +5,8 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useState,
 } from "react";
-import { io } from "socket.io-client";
 import {
   type AccessTokenProvider,
   accessTokenUrl,
@@ -15,10 +15,9 @@ import {
 import {
   createNotificationApi,
   type NotificationItem,
-  notificationItemOf,
   type UserNotificationPreferences,
 } from "./notificationApi";
-import { notificationSocketOptions } from "./notificationSocket";
+import { connectNotificationSocket } from "./notificationSocket";
 import { useSession } from "./SessionContext";
 import {
   useNotificationChanges,
@@ -36,6 +35,11 @@ interface NotificationContextType {
   unreadCount: number;
   preferences: UserNotificationPreferences | null;
   isLoading: boolean;
+  /**
+   * The live updates are down (no network, service restarting): the list
+   * is loaded again once the socket is back (ADM-N11).
+   */
+  isOffline: boolean;
   fetchNotifications: (
     folder?: "inbox" | "trash",
     page?: number,
@@ -105,37 +109,35 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
   const changes = useNotificationChanges({ api, ...list });
   const { preferences, fetchPreferences, updatePreferences, clearPreferences } =
     useNotificationPreferences(api);
-  const { fetchNotifications, receive, clear } = list;
+  const { fetchNotifications, refresh, receive, clear } = list;
+  const [isOffline, setIsOffline] = useState(false);
 
   // Connect the socket and load the inbox once signed in; the cleanup closes
   // the socket of the previous user
   useEffect(() => {
     if (!userId) {
+      setIsOffline(false);
       tokenProvider?.clear();
       clear();
       clearPreferences();
       return;
     }
 
-    const socket = io(apiUrl, notificationSocketOptions(tokenProvider));
-
-    socket.on("notification", (payload: unknown) => {
-      const item = notificationItemOf(payload);
-      if (item) receive(item);
+    const disconnect = connectNotificationSocket(apiUrl, tokenProvider, {
+      receive,
+      refresh: () => void refresh(),
+      setOffline: setIsOffline,
     });
-
     void fetchNotifications("inbox");
     void fetchPreferences();
-
-    return () => {
-      socket.disconnect();
-    };
+    return disconnect;
   }, [
     userId,
     apiUrl,
     tokenProvider,
     fetchNotifications,
     fetchPreferences,
+    refresh,
     receive,
     clear,
     clearPreferences,
@@ -148,6 +150,7 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
       unreadCount,
       preferences,
       isLoading,
+      isOffline,
       fetchNotifications,
       ...changes,
       fetchPreferences,
@@ -158,6 +161,7 @@ export const NotificationProvider: FC<NotificationProviderProps> = ({
       unreadCount,
       preferences,
       isLoading,
+      isOffline,
       fetchNotifications,
       changes,
       fetchPreferences,

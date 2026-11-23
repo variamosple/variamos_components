@@ -14,6 +14,7 @@ import type {
   singInResponse,
   UserRegistration,
 } from "../Model";
+import { keepGuestId, readGuestId } from "./guestId";
 import { readSessionAnswer } from "./sessionAnswer";
 import { forgetStoredSessionToken } from "./storedSessionToken";
 import {
@@ -36,14 +37,18 @@ interface SessionContextType {
   signUp: (
     registration: UserRegistration,
   ) => Promise<ResponseModel<unknown> | null>;
-  logout: () => void;
+  /**
+   * Signs out. Resolves to false when the admin could not close the
+   * session: the user stays signed in, and the page can say so (ADM-N14).
+   */
+  logout: () => Promise<boolean>;
 }
 
 const SessionContext = createContext<SessionContextType | undefined>(undefined);
 
-const guestIdKey = "guestId";
-
 const SIGN_IN_ERROR = "Sign in error.";
+
+const SESSION_OVER_CODES = new Set([401, 403]);
 
 export interface SessionProviderProps {
   loginUrl: string;
@@ -131,23 +136,33 @@ export const SessionProvider: FC<SessionProviderProps> = ({
       throw new Error("requestSignInAsGuest is not defined.");
     }
     setIsLoading(true);
-    return requestSignInAsGuest(localStorage.getItem(guestIdKey))
+    return requestSignInAsGuest(readGuestId())
       .then((response) => {
         if (response?.errorCode) return response;
-        localStorage.setItem(guestIdKey, response?.data?.id || "");
+        keepGuestId(response?.data?.id);
         return completeSignIn(response);
       })
       .finally(() => setIsLoading(false));
   };
 
-  const logout = () => {
-    void requestLogout().then(() => {
-      forgetStoredSessionToken();
-      publishNavigation(loginUrl);
+  const logout = () =>
+    requestLogout().then(
+      (response) => {
+        // 401 or 403: the session was already over
+        if (
+          response?.errorCode &&
+          !SESSION_OVER_CODES.has(response.errorCode)
+        ) {
+          return false;
+        }
+        forgetStoredSessionToken();
+        publishNavigation(loginUrl);
 
-      setTimeout(clearSession, 200);
-    });
-  };
+        setTimeout(clearSession, 200);
+        return true;
+      },
+      () => false,
+    );
 
   return (
     <SessionContext.Provider

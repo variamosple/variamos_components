@@ -3,6 +3,7 @@ import {
   type SetStateAction,
   useCallback,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import type {
@@ -29,10 +30,17 @@ export function useNotificationList(api: NotificationApi | null) {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  // The folder and page shown, loaded again after a reconnection
+  const lastQueryRef = useRef<[NotificationFolder, number, number]>([
+    "inbox",
+    1,
+    10,
+  ]);
 
   const fetchNotifications = useCallback(
     async (folder: NotificationFolder = "inbox", page = 1, limit = 10) => {
       if (!api) return;
+      lastQueryRef.current = [folder, page, limit];
       setIsLoading(true);
       await logFailure("Failed to fetch notifications:", async () => {
         const items = await api.list({ folder, page, limit });
@@ -43,6 +51,12 @@ export function useNotificationList(api: NotificationApi | null) {
       setIsLoading(false);
     },
     [api],
+  );
+
+  /** Loads the folder and page shown again. */
+  const refresh = useCallback(
+    () => fetchNotifications(...lastQueryRef.current),
+    [fetchNotifications],
   );
 
   const receive = useCallback((item: NotificationItem) => {
@@ -62,6 +76,7 @@ export function useNotificationList(api: NotificationApi | null) {
     setNotifications,
     setUnreadCount,
     fetchNotifications,
+    refresh,
     receive,
     clear,
   };

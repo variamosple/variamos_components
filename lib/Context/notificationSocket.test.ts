@@ -20,7 +20,8 @@ describe("notificationSocketOptions", () => {
 
     expect(await authOf(providerOf("t-1"))).toEqual({ token: "t-1" });
     expect(options).not.toHaveProperty("query");
-    expect(options.transports).toEqual(["websocket"]);
+    expect(options.transports).toEqual(["websocket", "polling"]);
+    expect(options.tryAllTransports).toBe(true);
   });
 
   it("sends an empty handshake without a token", async () => {

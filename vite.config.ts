@@ -84,13 +84,13 @@ export default defineConfig({
       exclude: ["lib/**/*.d.ts", "lib/**/*.test.{ts,tsx}", "lib/**/index.ts"],
       // A summary in the terminal: no report file to keep out of git
       reporter: ["text-summary"],
-      // Just under the measure of 2026-11-23 (88.44 / 81.3 / 89.12 / 89.57).
+      // Just under the measure of 2026-11-23 (94.02 / 85.64 / 94.29 / 95.02).
       // Raise them, never lower them.
       thresholds: {
-        statements: 87,
-        branches: 80,
-        functions: 88,
-        lines: 88,
+        statements: 93,
+        branches: 84,
+        functions: 93,
+        lines: 94,
       },
     },
   },

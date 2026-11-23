@@ -5,6 +5,8 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
+  useState,
 } from "react";
 import { isAllowedFor } from "../Common/isAllowedFor";
 import { useQuery } from "../Hooks";
@@ -30,6 +32,13 @@ export const MenuContext = createContext<MenuContext>({
   isLoading: true,
 });
 
+/**
+ * Waits before asking the menu again after a failure: the menu stayed empty
+ * until the page was reloaded (ADM-N13). Three tries more, then the page
+ * keeps no menu.
+ */
+export const MENU_RETRY_DELAYS_MS = [2_000, 5_000, 15_000];
+
 export interface MenuContextProviderProps {
   requestMenu: () => Promise<ResponseModel<Menu>>;
   children?: ReactNode;
@@ -45,7 +54,6 @@ export const MenuContextProvider: FC<MenuContextProviderProps> = ({
     data: menu,
     loadData,
     isLoading,
-    isLoaded,
   } = useQuery<unknown, Menu>({
     queryFunction: requestMenu,
     initialFilter: {},
@@ -81,11 +89,27 @@ export const MenuContextProvider: FC<MenuContextProviderProps> = ({
     );
   }, [menu?.options, basePath]);
 
+  // The last loadData: a new requestMenu at each render does not ask again
+  const loadDataRef = useRef(loadData);
+  loadDataRef.current = loadData;
+  const [failures, setFailures] = useState(0);
+
   useEffect(() => {
-    if (!isLoading && !isLoaded) {
-      void loadData({});
-    }
-  }, [isLoading, isLoaded, loadData]);
+    let active = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const tryAgainLater = () => {
+      const delay = MENU_RETRY_DELAYS_MS[failures];
+      if (!active || delay === undefined) return;
+      timer = setTimeout(() => setFailures(failures + 1), delay);
+    };
+    loadDataRef.current({}).then((response) => {
+      if (response.errorCode) tryAgainLater();
+    }, tryAgainLater);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [failures]);
 
   return (
     <MenuContext.Provider

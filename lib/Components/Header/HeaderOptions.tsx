@@ -6,7 +6,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import { NavDropdown } from "react-bootstrap";
+import { Alert, NavDropdown } from "react-bootstrap";
 import { Events } from "../../Common";
 import { isAllowedFor } from "../../Common/isAllowedFor";
 import { useMenu, useRouter, useSession } from "../../Context";
@@ -17,6 +17,16 @@ import { type BugReport, submitBugReport } from "./submitBugReport";
 export interface HeaderOptionsProps {
   adminApiUrl?: string;
 }
+
+/**
+ * The admin API when the header gets no adminApiUrl: "/v1" on the origin of
+ * the page, so that bug reports go to "/bugs" there.
+ */
+export const DEFAULT_ADMIN_API_URL = "/v1";
+
+/** Shown when the admin could not close the session. */
+export const LOGOUT_FAILED =
+  "Sign out failed: you are still signed in. Please try again.";
 
 const BUG_CATEGORIES = [
   "Editor",
@@ -39,10 +49,18 @@ export const HeaderOptions: FC<HeaderOptionsProps> = ({
   const [showBugModal, setShowBugModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [logoutFailed, setLogoutFailed] = useState(false);
 
-  // Prioritize prop, fallback to environment variable, then "/v1" as relative path in production
-  const adminApiUrl =
-    propAdminApiUrl || import.meta.env?.VITE_ADMIN_API_URL || "/v1";
+  // A failed sign out is said: before, nothing happened (ADM-N14)
+  const signOut = useCallback(() => {
+    setLogoutFailed(false);
+    void logout().then((done) => setLogoutFailed(!done));
+  }, [logout]);
+
+  // The address given by the application. The library cannot read the
+  // environment of the application: Vite replaced import.meta.env when the
+  // library was built, so that the fallback never worked (ADM-N12).
+  const adminApiUrl = propAdminApiUrl || DEFAULT_ADMIN_API_URL;
 
   const openBugModal = useCallback(() => {
     setSubmitError(null);
@@ -123,9 +141,21 @@ export const HeaderOptions: FC<HeaderOptionsProps> = ({
         ) : null}
 
         {isAuthenticated ? (
-          <NavDropdown.Item onClick={logout}>Logout</NavDropdown.Item>
+          <NavDropdown.Item onClick={signOut}>Logout</NavDropdown.Item>
         ) : null}
       </NavDropdown>
+
+      {logoutFailed ? (
+        <Alert
+          variant="danger"
+          dismissible
+          onClose={() => setLogoutFailed(false)}
+          className="position-fixed top-0 end-0 m-3"
+          style={{ zIndex: 1080 }}
+        >
+          {LOGOUT_FAILED}
+        </Alert>
+      ) : null}
 
       <BugFormModal
         show={showBugModal}

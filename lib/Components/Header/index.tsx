@@ -17,6 +17,11 @@ export interface HeaderProps {
   logoUrl?: string;
   logoAlt?: string;
   signInUrl: string;
+  /**
+   * Address of the admin API, e.g. https://app.variamos.com/variamos_ms_admin/v1;
+   * bug reports go to /bugs next to it. "/v1" on the origin of the page by
+   * default (DEFAULT_ADMIN_API_URL): give it when the admin is elsewhere.
+   */
   adminApiUrl?: string;
   /**
    * The id of the main content, which the skip link focuses; the element
