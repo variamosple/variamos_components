@@ -1,8 +1,12 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { act, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { routerOf, sessionInfoOf, userOf } from "../../test/renderWithContexts";
 import { type Menu, ResponseModel } from "../Model";
-import { MenuContextProvider, useMenu } from "./MenuContext";
+import {
+  MENU_RETRY_DELAYS_MS,
+  MenuContextProvider,
+  useMenu,
+} from "./MenuContext";
 import { RouterContext } from "./RouterContext";
 import { SessionProvider } from "./SessionContext";
 
@@ -54,10 +58,14 @@ const MenuView = () => {
   );
 };
 
-const renderMenu = (permissions: string[], basePath = "/admin/") => {
-  const requestMenu = vi.fn(() =>
-    Promise.resolve(new ResponseModel<Menu>().withData(MENU)),
-  );
+const menuAnswer = () =>
+  Promise.resolve(new ResponseModel<Menu>().withData(MENU));
+
+const renderMenu = (
+  permissions: string[],
+  basePath = "/admin/",
+  requestMenu = vi.fn(menuAnswer),
+) => {
   render(
     <RouterContext.Provider value={routerOf({ basePath })}>
       <SessionProvider
@@ -94,5 +102,45 @@ describe("MenuContextProvider", () => {
     expect(
       screen.getByText("options: Report a bug, Lab settings"),
     ).toBeInTheDocument();
+  });
+
+  describe("after a failure", () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("asks the menu again, after a pause", async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      const requestMenu = vi
+        .fn()
+        .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+        .mockResolvedValueOnce(
+          new ResponseModel<Menu>(undefined, 502, "Bad gateway"),
+        )
+        .mockImplementation(menuAnswer);
+      renderMenu([], "/admin/", requestMenu);
+
+      await act(() => vi.advanceTimersByTimeAsync(MENU_RETRY_DELAYS_MS[0]));
+      await act(() => vi.advanceTimersByTimeAsync(MENU_RETRY_DELAYS_MS[1]));
+
+      expect(await screen.findByText("items: Projects")).toBeInTheDocument();
+      expect(requestMenu).toHaveBeenCalledTimes(3);
+    });
+
+    it("stops after three more tries", async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      const requestMenu = vi
+        .fn()
+        .mockRejectedValue(new TypeError("Failed to fetch"));
+      renderMenu([], "/admin/", requestMenu);
+
+      for (const delay of MENU_RETRY_DELAYS_MS) {
+        await act(() => vi.advanceTimersByTimeAsync(delay));
+      }
+      await act(() => vi.advanceTimersByTimeAsync(60_000));
+
+      expect(requestMenu).toHaveBeenCalledTimes(4);
+      expect(screen.getByText("items:")).toBeInTheDocument();
+    });
   });
 });

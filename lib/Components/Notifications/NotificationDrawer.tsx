@@ -1,6 +1,6 @@
 import type React from "react";
 import { useEffect, useId, useState } from "react";
-import { Button, Nav, Offcanvas, Spinner } from "react-bootstrap";
+import { Alert, Button, Nav, Offcanvas, Spinner } from "react-bootstrap";
 import { ArrowLeft, CheckAll, Gear, Inbox, Trash } from "react-bootstrap-icons";
 import {
   type NotificationItem,
@@ -15,6 +15,10 @@ export interface NotificationDrawerProps {
 }
 
 type Folder = "inbox" | "trash";
+
+/** Shown while the live updates are down. */
+export const LIVE_UPDATES_PAUSED =
+  "Live updates paused: reconnecting. New notifications will appear once back.";
 
 const isFolder = (key: string | null): key is Folder =>
   key === "inbox" || key === "trash";
@@ -67,6 +71,43 @@ const NotificationList: React.FC<NotificationListProps> = ({
   );
 };
 
+interface FolderActionsProps {
+  folder: Folder;
+  onMarkAllAsRead: () => void;
+  onEmptyTrash: () => void;
+}
+
+/** What applies to the whole folder shown. */
+const FolderActions: React.FC<FolderActionsProps> = ({
+  folder,
+  onMarkAllAsRead,
+  onEmptyTrash,
+}) => (
+  <div className="d-flex justify-content-end align-items-center p-2 bg-light border-bottom px-3">
+    {folder === "inbox" ? (
+      <Button
+        variant="link"
+        size="sm"
+        className="p-0 text-primary text-decoration-none d-flex align-items-center"
+        onClick={onMarkAllAsRead}
+      >
+        <CheckAll className="me-1" size={18} />
+        Mark all as read
+      </Button>
+    ) : (
+      <Button
+        variant="link"
+        size="sm"
+        className="p-0 text-danger text-decoration-none d-flex align-items-center"
+        onClick={onEmptyTrash}
+      >
+        <Trash className="me-1" size={16} />
+        Empty Trash
+      </Button>
+    )}
+  </div>
+);
+
 export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
   show,
   onClose,
@@ -74,6 +115,7 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
   const {
     notifications,
     isLoading,
+    isOffline,
     fetchNotifications,
     markAsRead,
     markAllAsRead,
@@ -168,31 +210,22 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
               </Nav.Item>
             </Nav>
 
-            {/* Quick Actions Header */}
+            {isOffline ? (
+              <Alert
+                variant="warning"
+                role="status"
+                className="m-3 mb-0 py-2 small"
+              >
+                {LIVE_UPDATES_PAUSED}
+              </Alert>
+            ) : null}
+
             {notifications.length > 0 ? (
-              <div className="d-flex justify-content-end align-items-center p-2 bg-light border-bottom px-3">
-                {activeFolder === "inbox" ? (
-                  <Button
-                    variant="link"
-                    size="sm"
-                    className="p-0 text-primary text-decoration-none d-flex align-items-center"
-                    onClick={() => void markAllAsRead()}
-                  >
-                    <CheckAll className="me-1" size={18} />
-                    Mark all as read
-                  </Button>
-                ) : (
-                  <Button
-                    variant="link"
-                    size="sm"
-                    className="p-0 text-danger text-decoration-none d-flex align-items-center"
-                    onClick={() => void emptyTrash()}
-                  >
-                    <Trash className="me-1" size={16} />
-                    Empty Trash
-                  </Button>
-                )}
-              </div>
+              <FolderActions
+                folder={activeFolder}
+                onMarkAllAsRead={() => void markAllAsRead()}
+                onEmptyTrash={() => void emptyTrash()}
+              />
             ) : null}
 
             {/* Notifications List */}

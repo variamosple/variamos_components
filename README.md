@@ -24,6 +24,15 @@ Only the admin ends a session. `SessionProvider` checks `GET /auth/session-info`
 
 Since 0.9.0 the bug report form, the notification drawer and `ConfirmationModal` are named by their title (or question) for screen readers, and a page wrapped in `withPageVisit` is recorded even when it is rendered together with `AnalyticsProvider`.
 
+Also since 0.9.0:
+
+- `useQuery` and `usePaginatedQuery` fill `error` (the message of a failed answer, or a generic one when no answer came; `null` after a success), show only the answer of the last request, and change page on a copy of the filter.
+- `MenuContextProvider` asks the menu again 2 s, 5 s and 15 s after a failure, instead of keeping an empty menu until the page is reloaded.
+- `useSession().logout()` resolves to `false` when the admin could not close the session (other than 401 or 403): the user stays signed in and the header says so. It resolves to `true` once signed out.
+- The guest id is read and kept in `localStorage` only when the browser allows it.
+- `adminApiUrl` of `Header` has no hidden fallback any more: without it, bug reports go to `/bugs` on the origin of the page (`DEFAULT_ADMIN_API_URL` is `"/v1"`). The library never read `VITE_ADMIN_API_URL` of the application.
+- The notification socket falls back to long polling when WebSocket is blocked, and loads the folder shown again after each reconnection; `useNotifications().isOffline` is `true` while the live updates are down, and the drawer says so.
+
 ## Development
 
 Requires Node 26 (`.nvmrc`, `.mise.toml`). `npm install` sets up the Git hooks: Biome and cspell on the staged files before a commit, the conventional commit format, and typecheck, lint and tests before a push.

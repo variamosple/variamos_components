@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -9,11 +9,19 @@ import {
   userOf,
 } from "../../../test/renderWithContexts";
 import { NotificationBell } from "./NotificationBell";
-import { NotificationDrawer } from "./NotificationDrawer";
+import { LIVE_UPDATES_PAUSED, NotificationDrawer } from "./NotificationDrawer";
 
+// The socket of the provider: the tests fire its events
+const socketHandlers = new Map<string, (...args: unknown[]) => void>();
 vi.mock("socket.io-client", () => ({
-  io: () => ({ on: vi.fn(), disconnect: vi.fn() }),
+  io: () => ({
+    on: (event: string, handler: (...args: unknown[]) => void) =>
+      socketHandlers.set(event, handler),
+    disconnect: vi.fn(),
+  }),
 }));
+const fire = (event: string, ...args: unknown[]) =>
+  act(() => socketHandlers.get(event)?.(...args));
 
 const SERVICE = "https://notifications.example.test";
 
@@ -113,6 +121,45 @@ describe("NotificationDrawer", () => {
     expect(
       await within(drawer).findByText("No deleted notifications."),
     ).toBeInTheDocument();
+  });
+
+  it("shows a notification received live", async () => {
+    const { drawer } = await openDrawer([]);
+
+    fire("notification", notificationOf("n-9", "Live one"));
+
+    expect(await within(drawer).findByText(/'Live one'/)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Notifications" }),
+    ).toHaveTextContent("1");
+  });
+
+  it("says when live updates stop, and loads the folder again once back", async () => {
+    const { drawer, calls } = await openDrawer();
+    await userEvent.click(
+      within(drawer).getByRole("button", { name: "Trash" }),
+    );
+    await within(drawer).findByText(/Old project/);
+    fire("connect");
+
+    fire("disconnect", "transport close");
+    expect(
+      await within(drawer).findByText(LIVE_UPDATES_PAUSED),
+    ).toBeInTheDocument();
+    fire("connect_error", new Error("xhr poll error"));
+    const before = calls.length;
+    fire("connect");
+
+    await waitFor(() =>
+      expect(
+        within(drawer).queryByText(LIVE_UPDATES_PAUSED),
+      ).not.toBeInTheDocument(),
+    );
+    await waitFor(() =>
+      expect(calls.slice(before)).toContain(
+        "GET ?page=1&limit=10&folder=trash",
+      ),
+    );
   });
 
   it("says when the inbox is empty", async () => {

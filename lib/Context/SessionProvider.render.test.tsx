@@ -1,5 +1,6 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { sessionInfoOf, userOf } from "../../test/renderWithContexts";
 import { Events } from "../Common";
@@ -8,11 +9,16 @@ import { SessionProvider, useSession } from "./SessionContext";
 
 const SessionView = () => {
   const session = useSession();
+  const [signedOut, setSignedOut] = useState<boolean>();
   return (
     <div>
       <p>{session.isLoading ? "loading" : "ready"}</p>
       <p>{session.user?.name ?? "nobody"}</p>
-      <button type="button" onClick={session.logout}>
+      <p>sign out: {String(signedOut)}</p>
+      <button
+        type="button"
+        onClick={() => void session.logout().then(setSignedOut)}
+      >
         Sign out
       </button>
       <button
@@ -79,6 +85,59 @@ describe("SessionProvider", () => {
     expect(screen.getByText("nobody")).toBeInTheDocument();
     Events.unsubscribe("variamosNavigate", onNavigate);
     vi.useRealTimers();
+  });
+
+  it.each([
+    [
+      "the admin answers an error",
+      () => Promise.resolve(new ResponseModel<void>(undefined, 500, "Down")),
+    ],
+    ["no answer comes", () => Promise.reject(new TypeError("Failed to fetch"))],
+  ])(
+    "keeps the user signed in when %s on sign out",
+    async (_case, requestLogout) => {
+      const navigation = vi.fn();
+      const onNavigate = (event: CustomEvent<string>) =>
+        navigation(event.detail);
+      Events.subscribe("variamosNavigate", onNavigate);
+      render(
+        <SessionProvider
+          loginUrl="/login"
+          getSessionInfo={sessionInfoOf(userOf())}
+          requestLogout={requestLogout}
+        >
+          <SessionView />
+        </SessionProvider>,
+      );
+      await screen.findByText("Ada Lovelace");
+
+      await userEvent.click(screen.getByRole("button", { name: "Sign out" }));
+
+      expect(await screen.findByText("sign out: false")).toBeInTheDocument();
+      expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
+      expect(navigation).not.toHaveBeenCalled();
+      Events.unsubscribe("variamosNavigate", onNavigate);
+    },
+  );
+
+  it("signs out when the session was already over", async () => {
+    render(
+      <SessionProvider
+        loginUrl="/login"
+        getSessionInfo={sessionInfoOf(userOf())}
+        requestLogout={() =>
+          Promise.resolve(new ResponseModel<void>(undefined, 401, "Expired"))
+        }
+      >
+        <SessionView />
+      </SessionProvider>,
+    );
+    await screen.findByText("Ada Lovelace");
+
+    await userEvent.click(screen.getByRole("button", { name: "Sign out" }));
+
+    expect(await screen.findByText("sign out: true")).toBeInTheDocument();
+    expect(await screen.findByText("nobody")).toBeInTheDocument();
   });
 
   it("reads the session again after a sign in", async () => {
