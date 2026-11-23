@@ -9,7 +9,12 @@ import {
   userOf,
 } from "../../../test/renderWithContexts";
 import { NotificationBell } from "./NotificationBell";
-import { LIVE_UPDATES_PAUSED, NotificationDrawer } from "./NotificationDrawer";
+import {
+  EMPTY_TRASH_QUESTION,
+  LIVE_UPDATES_PAUSED,
+  NotificationDrawer,
+  TRASH_RETENTION_NOTE,
+} from "./NotificationDrawer";
 
 // The socket of the provider: the tests fire its events
 const socketHandlers = new Map<string, (...args: unknown[]) => void>();
@@ -105,22 +110,87 @@ describe("NotificationDrawer", () => {
     expect(within(drawer).queryByText(/Smart home/)).not.toBeInTheDocument();
   });
 
-  it("shows the trash and empties it", async () => {
-    const { drawer, calls } = await openDrawer();
-
+  const openTrash = async (drawer: HTMLElement) => {
     await userEvent.click(
       within(drawer).getByRole("button", { name: "Trash" }),
     );
-    expect(await within(drawer).findByText(/Old project/)).toBeInTheDocument();
+    await within(drawer).findByText(/Old project/);
+  };
+
+  it("shows the trash, says how long it keeps them, and empties it once confirmed", async () => {
+    const { drawer, calls } = await openDrawer();
+
+    await openTrash(drawer);
     expect(calls).toContain("GET ?page=1&limit=10&folder=trash");
+    expect(within(drawer).getByText(TRASH_RETENTION_NOTE)).toBeInTheDocument();
 
     await userEvent.click(
       within(drawer).getByRole("button", { name: "Empty Trash" }),
+    );
+    const confirm = await screen.findByRole("dialog", {
+      name: EMPTY_TRASH_QUESTION,
+    });
+    expect(calls).not.toContain("DELETE /trash");
+    await userEvent.click(
+      within(confirm).getByRole("button", { name: "Empty Trash" }),
     );
     await waitFor(() => expect(calls).toContain("DELETE /trash"));
     expect(
       await within(drawer).findByText("No deleted notifications."),
     ).toBeInTheDocument();
+  });
+
+  it("keeps the trash when emptying it is cancelled", async () => {
+    const { drawer, calls } = await openDrawer();
+    await openTrash(drawer);
+
+    await userEvent.click(
+      within(drawer).getByRole("button", { name: "Empty Trash" }),
+    );
+    const confirm = await screen.findByRole("dialog", {
+      name: EMPTY_TRASH_QUESTION,
+    });
+    await userEvent.click(
+      within(confirm).getByRole("button", { name: "Cancel" }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: EMPTY_TRASH_QUESTION }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(calls).not.toContain("DELETE /trash");
+    expect(within(drawer).getByText(/Old project/)).toBeInTheDocument();
+  });
+
+  it("restores a notification from the trash, counted again when unread", async () => {
+    const { drawer, calls } = await openDrawer(
+      [notificationOf("n-1", "Smart home")],
+      [notificationOf("n-3", "Old project")],
+    );
+    const bell = screen.getByRole("button", { name: "Notifications" });
+    expect(bell).toHaveTextContent("1");
+    await openTrash(drawer);
+    expect(
+      within(drawer).queryByTitle("Move to trash"),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(within(drawer).getByTitle("Restore to inbox"));
+
+    await waitFor(() => expect(calls).toContain("PATCH /n-3/restore"));
+    expect(within(drawer).queryByText(/Old project/)).not.toBeInTheDocument();
+    expect(bell).toHaveTextContent("2");
+  });
+
+  it("offers no restore in the inbox", async () => {
+    const { drawer } = await openDrawer();
+
+    expect(
+      within(drawer).queryByTitle("Restore to inbox"),
+    ).not.toBeInTheDocument();
+    expect(
+      within(drawer).queryByText(TRASH_RETENTION_NOTE),
+    ).not.toBeInTheDocument();
   });
 
   it("shows a notification received live", async () => {

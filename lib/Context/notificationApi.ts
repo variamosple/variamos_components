@@ -127,6 +127,9 @@ export function createNotificationApi({
     async remove(id: string): Promise<boolean> {
       return (await send(`/${id}`, "DELETE")) !== null;
     },
+    async restore(id: string): Promise<boolean> {
+      return (await send(`/${id}/restore`, "PATCH")) !== null;
+    },
     async preferences(): Promise<UserNotificationPreferences | null> {
       return preferencesOf(await readJson(await send("/preferences")));
     },

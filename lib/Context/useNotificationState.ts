@@ -138,9 +138,35 @@ export function useNotificationChanges({
     [api, notifications, setNotifications, setUnreadCount],
   );
 
+  // Back to the inbox: it leaves the trash shown, and counts again as
+  // unread when it was (ADM-N16)
+  const restoreNotification = useCallback(
+    (id: string) =>
+      logFailure("Failed to restore notification:", async () => {
+        const wasUnread =
+          notifications.find((n) => n.id === id)?.isRead === false;
+        if (!(await api?.restore(id))) return;
+        setNotifications((prev) => prev.filter((n) => n.id !== id));
+        if (wasUnread) setUnreadCount((count) => count + 1);
+      }),
+    [api, notifications, setNotifications, setUnreadCount],
+  );
+
   return useMemo(
-    () => ({ markAsRead, markAllAsRead, emptyTrash, deleteNotification }),
-    [markAsRead, markAllAsRead, emptyTrash, deleteNotification],
+    () => ({
+      markAsRead,
+      markAllAsRead,
+      emptyTrash,
+      deleteNotification,
+      restoreNotification,
+    }),
+    [
+      markAsRead,
+      markAllAsRead,
+      emptyTrash,
+      deleteNotification,
+      restoreNotification,
+    ],
   );
 }
 

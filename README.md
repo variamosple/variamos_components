@@ -32,6 +32,7 @@ Also since 0.9.0:
 - The guest id is read and kept in `localStorage` only when the browser allows it.
 - `adminApiUrl` of `Header` has no hidden fallback any more: without it, bug reports go to `/bugs` on the origin of the page (`DEFAULT_ADMIN_API_URL` is `"/v1"`). The library never read `VITE_ADMIN_API_URL` of the application.
 - The notification socket falls back to long polling when WebSocket is blocked, and loads the folder shown again after each reconnection; `useNotifications().isOffline` is `true` while the live updates are down, and the drawer says so.
+- The drawer asks before emptying the trash, offers to restore each notification of the trash (`useNotifications().restoreNotification`, `PATCH /notifications/:id/restore`), and says that the trash keeps them 30 days. The restore route needs variamos_ms_notifications with ADM-N16; older versions answer 404 and the notification stays in the trash.
 
 ## Development
 
