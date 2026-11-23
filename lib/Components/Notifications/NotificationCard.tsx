@@ -1,6 +1,10 @@
 import type { FC } from "react";
 import { Button } from "react-bootstrap";
-import { CircleFill, Trash } from "react-bootstrap-icons";
+import {
+  ArrowCounterclockwise,
+  CircleFill,
+  Trash,
+} from "react-bootstrap-icons";
 import type { NotificationItem } from "../../Context/notificationApi";
 import { notificationTextOf } from "./notificationText";
 
@@ -9,6 +13,8 @@ export interface NotificationCardProps {
   inInbox: boolean;
   onMarkAsRead: (id: string) => void;
   onDelete: (id: string) => void;
+  /** Shown in the trash: takes the notification back to the inbox. */
+  onRestore?: (id: string) => void;
 }
 
 const formatTime = (dateStr: string) =>
@@ -24,6 +30,7 @@ export const NotificationCard: FC<NotificationCardProps> = ({
   inInbox,
   onMarkAsRead,
   onDelete,
+  onRestore,
 }) => {
   const { title, body } = notificationTextOf(item);
   const isUnread = inInbox && !item.isRead;
@@ -88,6 +95,18 @@ export const NotificationCard: FC<NotificationCardProps> = ({
               }}
             >
               <Trash size={14} style={{ transition: "fill 0.2s" }} />
+            </Button>
+          ) : null}
+          {!inInbox && onRestore ? (
+            <Button
+              variant="link"
+              className="p-1 text-secondary border-0 d-flex align-items-center"
+              onClick={() => onRestore(item.id)}
+              title="Restore to inbox"
+              aria-label="Restore to inbox"
+              style={ICON_STYLE}
+            >
+              <ArrowCounterclockwise size={14} />
             </Button>
           ) : null}
         </div>

@@ -49,6 +49,8 @@ interface NotificationContextType {
   markAllAsRead: () => Promise<void>;
   emptyTrash: () => Promise<void>;
   deleteNotification: (id: string) => Promise<void>;
+  /** Takes a notification out of the trash, back to the inbox. */
+  restoreNotification: (id: string) => Promise<void>;
   fetchPreferences: () => Promise<void>;
   updatePreferences: (
     updates: Partial<UserNotificationPreferences>,

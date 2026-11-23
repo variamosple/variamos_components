@@ -6,6 +6,7 @@ import {
   type NotificationItem,
   useNotifications,
 } from "../../Context/NotificationContext";
+import ConfirmationModal from "../ConfirmationModal";
 import { NotificationCard } from "./NotificationCard";
 import { NotificationSettings } from "./NotificationSettings";
 
@@ -29,7 +30,12 @@ interface NotificationListProps {
   notifications: NotificationItem[];
   onMarkAsRead: (id: string) => void;
   onDelete: (id: string) => void;
+  onRestore: (id: string) => void;
 }
+
+/** Said in the trash: TrashPurgeJob of the service deletes them. */
+export const TRASH_RETENTION_NOTE =
+  "Notifications in the trash are deleted after 30 days.";
 
 const NotificationList: React.FC<NotificationListProps> = ({
   folder,
@@ -37,7 +43,14 @@ const NotificationList: React.FC<NotificationListProps> = ({
   notifications,
   onMarkAsRead,
   onDelete,
+  onRestore,
 }) => {
+  const retention =
+    folder === "trash" ? (
+      <p className="text-muted small text-center mb-3">
+        {TRASH_RETENTION_NOTE}
+      </p>
+    ) : null;
   if (isLoading) {
     return (
       <div className="text-center py-5">
@@ -53,11 +66,13 @@ const NotificationList: React.FC<NotificationListProps> = ({
             ? "Your inbox is empty!"
             : "No deleted notifications."}
         </p>
+        {retention}
       </div>
     );
   }
   return (
     <div className="px-3">
+      {retention}
       {notifications.map((item) => (
         <NotificationCard
           key={item.id}
@@ -65,6 +80,7 @@ const NotificationList: React.FC<NotificationListProps> = ({
           inInbox={folder === "inbox"}
           onMarkAsRead={onMarkAsRead}
           onDelete={onDelete}
+          onRestore={onRestore}
         />
       ))}
     </div>
@@ -77,36 +93,54 @@ interface FolderActionsProps {
   onEmptyTrash: () => void;
 }
 
+/** Asked before the trash is emptied: nothing brings it back (ADM-N16). */
+export const EMPTY_TRASH_QUESTION =
+  "Delete every notification in the trash for good? This cannot be undone.";
+
 /** What applies to the whole folder shown. */
 const FolderActions: React.FC<FolderActionsProps> = ({
   folder,
   onMarkAllAsRead,
   onEmptyTrash,
-}) => (
-  <div className="d-flex justify-content-end align-items-center p-2 bg-light border-bottom px-3">
-    {folder === "inbox" ? (
-      <Button
-        variant="link"
-        size="sm"
-        className="p-0 text-primary text-decoration-none d-flex align-items-center"
-        onClick={onMarkAllAsRead}
-      >
-        <CheckAll className="me-1" size={18} />
-        Mark all as read
-      </Button>
-    ) : (
-      <Button
-        variant="link"
-        size="sm"
-        className="p-0 text-danger text-decoration-none d-flex align-items-center"
-        onClick={onEmptyTrash}
-      >
-        <Trash className="me-1" size={16} />
-        Empty Trash
-      </Button>
-    )}
-  </div>
-);
+}) => {
+  const [isConfirming, setIsConfirming] = useState(false);
+  return (
+    <div className="d-flex justify-content-end align-items-center p-2 bg-light border-bottom px-3">
+      {folder === "inbox" ? (
+        <Button
+          variant="link"
+          size="sm"
+          className="p-0 text-primary text-decoration-none d-flex align-items-center"
+          onClick={onMarkAllAsRead}
+        >
+          <CheckAll className="me-1" size={18} />
+          Mark all as read
+        </Button>
+      ) : (
+        <Button
+          variant="link"
+          size="sm"
+          className="p-0 text-danger text-decoration-none d-flex align-items-center"
+          onClick={() => setIsConfirming(true)}
+        >
+          <Trash className="me-1" size={16} />
+          Empty Trash
+        </Button>
+      )}
+      <ConfirmationModal
+        show={isConfirming}
+        message={EMPTY_TRASH_QUESTION}
+        confirmLabel="Empty Trash"
+        confirmButtonVariant="danger"
+        onCancel={() => setIsConfirming(false)}
+        onConfirm={() => {
+          setIsConfirming(false);
+          onEmptyTrash();
+        }}
+      />
+    </div>
+  );
+};
 
 export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
   show,
@@ -121,6 +155,7 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
     markAllAsRead,
     emptyTrash,
     deleteNotification,
+    restoreNotification,
   } = useNotifications();
 
   const [activeFolder, setActiveFolder] = useState<Folder>("inbox");
@@ -236,6 +271,7 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({
                 notifications={notifications}
                 onMarkAsRead={(id) => void markAsRead(id)}
                 onDelete={(id) => void deleteNotification(id)}
+                onRestore={(id) => void restoreNotification(id)}
               />
             </div>
           </>
