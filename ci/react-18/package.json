@@ -1,0 +1,9 @@
+{
+  "name": "variamos-components-react-18-check",
+  "private": true,
+  "description": "React 18, locked, for the CI job that runs the tests with the oldest React the package accepts",
+  "dependencies": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  }
+}

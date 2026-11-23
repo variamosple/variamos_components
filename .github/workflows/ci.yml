@@ -42,8 +42,21 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
+      # Locked versions and checksums in ci/react-18/package-lock.json; its
+      # dependencies are nested under react and react-dom, so the packages
+      # of the main lockfile (scheduler of React 19, js-tokens) stay as they are
       - name: Install React 18
-        run: npm install --no-save --ignore-scripts react@^18.3.1 react-dom@^18.3.1
+        run: |
+          npm ci --ignore-scripts --prefix ci/react-18
+          for pkg in react react-dom; do
+            rm -rf "node_modules/$pkg"
+            cp -R "ci/react-18/node_modules/$pkg" node_modules/
+            mkdir -p "node_modules/$pkg/node_modules"
+            find ci/react-18/node_modules -mindepth 1 -maxdepth 1 \
+              ! -name '.*' ! -name 'react' ! -name 'react-dom' \
+              -exec cp -R {} "node_modules/$pkg/node_modules/" \;
+          done
+          node -e 'console.log("react", require("react").version, "react-dom", require("react-dom").version)'
 
       - name: Run unit tests with React 18
         run: npx vitest run

@@ -40,6 +40,6 @@ Requires Node 26 (`.nvmrc`, `.mise.toml`). `npm install` sets up the Git hooks: 
 | `npm run build` | Builds `dist/` |
 | `npm run check-package` | What `npm pack` would publish, then publint |
 
-The CI runs the same commands on every pull request, and the tests once more with React 18, which the package also accepts. The package is published to npm by hand.
+The CI runs the same commands on every pull request, and the tests once more with React 18, which the package also accepts (versions locked in `ci/react-18/package-lock.json`). The package is published to npm by hand.
 
 Render tests use `test/renderWithContexts.tsx`: the real session and notification providers over a fake session-info and a fake notification service, and the router and menu given by the test. `axeViolations` lists what axe finds in an element (color contrast aside: jsdom computes no style).
