@@ -3,16 +3,26 @@ import { Container, Nav, Navbar } from "react-bootstrap";
 import { useMenu, useRouter, useSession } from "../../Context";
 import { NotificationBell } from "../Notifications/NotificationBell";
 import { NotificationDrawer } from "../Notifications/NotificationDrawer";
+import { HeaderBrand } from "./HeaderBrand";
 import { HeaderOptions } from "./HeaderOptions";
+import { DEFAULT_MAIN_CONTENT_ID } from "./keyboardAccess";
 import { MenuItemComponent } from "./MenuItem";
+import { SkipLink } from "./SkipLink";
 import { SubHeader } from "./SubHeader";
 import styles from "./styles.module.css";
+
+export { DEFAULT_MAIN_CONTENT_ID } from "./keyboardAccess";
 
 export interface HeaderProps {
   logoUrl?: string;
   logoAlt?: string;
   signInUrl: string;
   adminApiUrl?: string;
+  /**
+   * The id of the main content, which the skip link focuses; the element
+   * needs tabIndex={-1}. "main-content" by default.
+   */
+  mainContentId?: string;
 }
 
 export const Header: FC<HeaderProps> = ({
@@ -20,26 +30,26 @@ export const Header: FC<HeaderProps> = ({
   logoAlt = "App logo",
   signInUrl,
   adminApiUrl,
+  mainContentId = DEFAULT_MAIN_CONTENT_ID,
 }) => {
   const { items } = useMenu();
-  const { navigate } = useRouter();
+  const { navigate, basePath } = useRouter();
   const { isAuthenticated, isLoading } = useSession();
   const [showDrawer, setShowDrawer] = useState(false);
   const menuId = useId();
 
   return (
     <header className="sticky-top">
+      <SkipLink targetId={mainContentId} />
       {/* Below 768 px the menu folds under a toggle; the account stays shown */}
       <Navbar bg="dark" variant="dark" expand="md">
         <Container fluid>
-          <Navbar.Brand onClick={() => navigate("/")}>
-            <img
-              src={logoUrl}
-              height="30"
-              className="d-inline-block align-top"
-              alt={logoAlt}
-            />
-          </Navbar.Brand>
+          <HeaderBrand
+            logoUrl={logoUrl}
+            logoAlt={logoAlt}
+            href={basePath}
+            onNavigate={() => navigate("/")}
+          />
 
           <Nav
             className={`flex-row align-items-center ms-auto order-md-last ${styles.accountNav}`}
