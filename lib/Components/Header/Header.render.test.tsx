@@ -178,6 +178,52 @@ describe("Header", () => {
     },
   );
 
+  it("keeps the form, its text and its file when the report is refused", async () => {
+    const refused = (input: RequestInfo | URL) =>
+      String(input) === "/bugs"
+        ? Promise.resolve(
+            Response.json(
+              { errorCode: 400, message: "Title too long" },
+              { status: 400 },
+            ),
+          )
+        : emptyAnswer();
+    vi.stubGlobal("fetch", vi.fn(refused));
+    const user = userOf();
+    renderWithContexts(<Header signInUrl="/login" />, {
+      user,
+      notificationsUrl: "https://notifications.example.test",
+    });
+    await screen.findByText(user.name);
+
+    Events.publish("openReportBugModal", {});
+    const form = await screen.findByRole("dialog", {
+      name: "Report a New Bug",
+    });
+    await userEvent.type(within(form).getByLabelText("Title *"), "Save fails");
+    await userEvent.type(
+      within(form).getByLabelText("Description *"),
+      "Nothing happens on save.",
+    );
+    await userEvent.upload(
+      within(form).getByLabelText("Attachment (Optional)"),
+      new File(["trace"], "trace.txt", { type: "text/plain" }),
+    );
+    await userEvent.click(
+      within(form).getByRole("button", { name: "Report Bug" }),
+    );
+
+    expect(await within(form).findByRole("alert")).toHaveTextContent(
+      "Title too long",
+    );
+    expect(screen.getByRole("dialog")).toBe(form);
+    expect(within(form).getByLabelText("Title *")).toHaveValue("Save fails");
+    expect(within(form).getByLabelText("Description *")).toHaveValue(
+      "Nothing happens on save.",
+    );
+    expect(within(form).getByText("Selected file: trace.txt")).toBeVisible();
+  });
+
   it("goes home from the logo and to the content from the skip link", async () => {
     const router = routerOf();
     renderWithContexts(

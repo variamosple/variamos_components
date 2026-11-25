@@ -4,6 +4,7 @@ import {
   type SubmitEvent,
   useEffect,
   useId,
+  useRef,
   useState,
 } from "react";
 import { Alert, Button, Form, Modal } from "react-bootstrap";
@@ -20,6 +21,57 @@ interface BugFormModalProps {
   /** Why the last submission failed, shown above the form. */
   errorMessage?: string | null;
 }
+
+interface AttachmentFieldProps {
+  selectedFile: File | null;
+  setSelectedFile: (file: File | null) => void;
+  disabled: boolean;
+}
+
+/** The file input, with the name of the file chosen and a way to remove it. */
+const AttachmentField: FC<AttachmentFieldProps> = ({
+  selectedFile,
+  setSelectedFile,
+  disabled,
+}) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const removeSelectedFile = () => {
+    setSelectedFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  return (
+    <>
+      {/* A cancelled file dialog empties the input: the form follows
+          it, so that no file is sent that the reporter no longer sees
+          (UX-34, EV-84) */}
+      <Form.Control
+        type="file"
+        ref={fileInputRef}
+        onChange={(e: ChangeEvent<HTMLInputElement>) => {
+          setSelectedFile(e.target.files?.[0] ?? null);
+        }}
+      />
+      {selectedFile ? (
+        <div className="d-flex align-items-center gap-2 mt-2 small">
+          <span className="text-truncate">
+            Selected file: {selectedFile.name}
+          </span>
+          <Button
+            variant="link"
+            size="sm"
+            className="p-0"
+            onClick={removeSelectedFile}
+            disabled={disabled}
+            aria-label={`Remove the file ${selectedFile.name}`}
+          >
+            Remove
+          </Button>
+        </div>
+      ) : null}
+    </>
+  );
+};
 
 export const BugFormModal: FC<BugFormModalProps> = ({
   show,
@@ -75,7 +127,8 @@ export const BugFormModal: FC<BugFormModalProps> = ({
       centered
       aria-labelledby={titleId}
     >
-      <Modal.Header closeButton>
+      {/* No way to close while sending, as Cancel is locked (EV-84) */}
+      <Modal.Header closeButton={!isSubmitting}>
         <Modal.Title id={titleId}>Report a New Bug</Modal.Title>
       </Modal.Header>
 
@@ -155,13 +208,10 @@ export const BugFormModal: FC<BugFormModalProps> = ({
 
           <Form.Group className="mb-3" controlId="bugFile">
             <Form.Label>Attachment (Optional)</Form.Label>
-            <Form.Control
-              type="file"
-              onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                if (e.target.files && e.target.files.length > 0) {
-                  setSelectedFile(e.target.files[0]);
-                }
-              }}
+            <AttachmentField
+              selectedFile={selectedFile}
+              setSelectedFile={setSelectedFile}
+              disabled={isSubmitting}
             />
           </Form.Group>
         </Modal.Body>

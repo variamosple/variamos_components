@@ -34,6 +34,8 @@ Also since 0.9.0:
 - The notification socket falls back to long polling when WebSocket is blocked, and loads the folder shown again after each reconnection; `useNotifications().isOffline` is `true` while the live updates are down, and the drawer says so.
 - The drawer asks before emptying the trash, offers to restore each notification of the trash (`useNotifications().restoreNotification`, `PATCH /notifications/:id/restore`), and says that the trash keeps them 30 days. The restore route needs variamos_ms_notifications with ADM-N16; older versions answer 404 and the notification stays in the trash.
 
+Since 0.9.1 the bug report form names the file chosen and can remove it; a cancelled file dialog no longer keeps, and sends, the file chosen before. The form cannot be closed while it is sending, and it keeps its text and file when the report is refused.
+
 ## Development
 
 Requires Node 26 (`.nvmrc`, `.mise.toml`). `npm install` sets up the Git hooks: Biome and cspell on the staged files before a commit, the conventional commit format, and typecheck, lint and tests before a push.
