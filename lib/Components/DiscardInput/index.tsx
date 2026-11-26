@@ -1,9 +1,12 @@
 import { type FC, useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Button } from "react-bootstrap";
 import { type PageTexts, pageText } from "../../Common/pageText";
-import { useUnsavedInput } from "../../Hooks/unsavedInput";
+import {
+  type UnsavedInputOptions,
+  useUnsavedInput,
+} from "../../Hooks/unsavedInput";
 
-interface DiscardConfirmationOptions {
+interface DiscardConfirmationOptions extends UnsavedInputOptions {
   /** The form holds unsaved input, in the sense of isUnsavedInput. */
   holdsInput: boolean;
   /** Closes the form, input dropped. */
@@ -20,9 +23,10 @@ interface DiscardConfirmationOptions {
 export function useDiscardConfirmation({
   holdsInput,
   onClose,
+  keptOnNavigation,
 }: DiscardConfirmationOptions) {
   const [isConfirming, setIsConfirming] = useState(false);
-  useUnsavedInput(holdsInput);
+  useUnsavedInput(holdsInput, { keptOnNavigation });
 
   // Nothing left to lose: no question
   useEffect(() => {
@@ -52,6 +56,8 @@ interface DiscardInputPromptProps {
   onDiscard: () => void;
   /** What closing drops, when the default question is not enough. */
   question?: string;
+  /** What the answer that drops the input does, "Discard" by default. */
+  discardLabel?: string;
 }
 
 /**
@@ -63,6 +69,7 @@ export const DiscardInputPrompt: FC<DiscardInputPromptProps> = ({
   onKeepEditing,
   onDiscard,
   question,
+  discardLabel,
 }) => {
   const keepRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -82,7 +89,7 @@ export const DiscardInputPrompt: FC<DiscardInputPromptProps> = ({
         {pageText(DISCARD_TEXTS.keepEditing)}
       </Button>
       <Button variant="danger" onClick={onDiscard}>
-        {pageText(DISCARD_TEXTS.discard)}
+        {discardLabel ?? pageText(DISCARD_TEXTS.discard)}
       </Button>
     </Alert>
   );

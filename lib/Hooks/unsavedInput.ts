@@ -34,8 +34,28 @@ function comparable(value: unknown): string {
   return String(value);
 }
 
-// The forms of the page that hold unsaved input, each by its own key
-const holders = new Set<symbol>();
+/** How a form that holds unsaved input lives along the page. */
+export interface UnsavedInputOptions {
+  /**
+   * The form stays when the page changes, as the global bug form of the
+   * header does: leaving the page drops nothing of it. The session and the
+   * closing of the tab still count it.
+   */
+  keptOnNavigation?: boolean;
+}
+
+/** What is asked of the forms that hold unsaved input. */
+export interface UnsavedInputQuery {
+  /**
+   * Only the input that leaving the page would drop: the forms kept on
+   * navigation do not count.
+   */
+  leavingPage?: boolean;
+}
+
+// The forms of the page that hold unsaved input, each by its own key, with
+// whether it stays when the page changes
+const holders = new Map<symbol, boolean>();
 const listeners = new Set<() => void>();
 
 // The browser asks before the tab is closed or reloaded
@@ -43,9 +63,9 @@ const askBeforeLeaving = (event: BeforeUnloadEvent) => {
   event.preventDefault();
 };
 
-function setHolder(key: symbol, holds: boolean) {
+function setHolder(key: symbol, holds: boolean, keptOnNavigation = false) {
   const before = holders.size;
-  if (holds) holders.add(key);
+  if (holds) holders.set(key, keptOnNavigation);
   else holders.delete(key);
   if (holders.size === before) return;
   if (before === 0) window.addEventListener("beforeunload", askBeforeLeaving);
@@ -55,8 +75,19 @@ function setHolder(key: symbol, holds: boolean) {
   for (const listener of listeners) listener();
 }
 
-/** Whether a form of the page holds unsaved input. */
-export const hasUnsavedInput = (): boolean => holders.size > 0;
+/**
+ * Whether a form of the page holds unsaved input; with `leavingPage`, only
+ * a form that leaving the page would drop.
+ */
+export const hasUnsavedInput = ({
+  leavingPage = false,
+}: UnsavedInputQuery = {}): boolean =>
+  leavingPage
+    ? [...holders.values()].some((keptOnNavigation) => !keptOnNavigation)
+    : holders.size > 0;
+
+// The snapshot of useHasUnsavedInput takes no argument
+const anyUnsavedInput = () => hasUnsavedInput();
 
 function subscribe(listener: () => void) {
   listeners.add(listener);
@@ -69,17 +100,21 @@ function subscribe(listener: () => void) {
  * Says, while the component is mounted, whether its form holds unsaved
  * input (see isUnsavedInput). The session then keeps the page when the
  * connection is lost or the session ends, and the browser asks before the
- * tab is closed.
+ * tab is closed. A form kept on navigation does not stop a change of page
+ * (UnsavedInputOptions).
  */
-export function useUnsavedInput(holdsInput: boolean): void {
+export function useUnsavedInput(
+  holdsInput: boolean,
+  { keptOnNavigation = false }: UnsavedInputOptions = {},
+): void {
   useEffect(() => {
     if (!holdsInput) return;
     const key = Symbol("unsaved input");
-    setHolder(key, true);
+    setHolder(key, true, keptOnNavigation);
     return () => setHolder(key, false);
-  }, [holdsInput]);
+  }, [holdsInput, keptOnNavigation]);
 }
 
 /** Whether a form of the page holds unsaved input, kept up to date. */
 export const useHasUnsavedInput = (): boolean =>
-  useSyncExternalStore(subscribe, hasUnsavedInput, hasUnsavedInput);
+  useSyncExternalStore(subscribe, anyUnsavedInput, anyUnsavedInput);

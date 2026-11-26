@@ -76,6 +76,22 @@ describe("useDiscardConfirmation", () => {
     );
   });
 
+  it("names the answer that drops the input, when given", () => {
+    render(
+      <DiscardInputPrompt
+        discardLabel="Sign out"
+        onKeepEditing={vi.fn()}
+        onDiscard={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: "Sign out" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Discard" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("has no accessibility violation", async () => {
     const { container } = render(
       <DiscardInputPrompt onKeepEditing={vi.fn()} onDiscard={vi.fn()} />,
