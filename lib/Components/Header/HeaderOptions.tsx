@@ -1,18 +1,10 @@
-import {
-  type FC,
-  useCallback,
-  useEffect,
-  useId,
-  useMemo,
-  useState,
-} from "react";
+import { type FC, useCallback, useId, useMemo, useState } from "react";
 import { Alert, NavDropdown } from "react-bootstrap";
-import { Events } from "../../Common";
 import { isAllowedFor } from "../../Common/isAllowedFor";
 import { useMenu, useRouter, useSession } from "../../Context";
 import { mapToWebTarget } from "../../Model";
 import { BugFormModal } from "./BugFormModal";
-import { type BugReport, submitBugReport } from "./submitBugReport";
+import { useBugReport } from "./useBugReport";
 
 export interface HeaderOptionsProps {
   adminApiUrl?: string;
@@ -41,14 +33,11 @@ const BUG_CATEGORIES = [
 export const HeaderOptions: FC<HeaderOptionsProps> = ({
   adminApiUrl: propAdminApiUrl,
 }) => {
-  const { user, isAuthenticated, logout } = useSession();
+  const { user, isAuthenticated, isReadOnly, logout } = useSession();
   const { options } = useMenu();
   const { navigate } = useRouter();
   const dropdownId = useId();
 
-  const [showBugModal, setShowBugModal] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
   const [logoutFailed, setLogoutFailed] = useState(false);
 
   // A failed sign out is said: before, nothing happened (ADM-N14)
@@ -62,35 +51,7 @@ export const HeaderOptions: FC<HeaderOptionsProps> = ({
   // library was built, so that the fallback never worked (ADM-N12).
   const adminApiUrl = propAdminApiUrl || DEFAULT_ADMIN_API_URL;
 
-  const openBugModal = useCallback(() => {
-    setSubmitError(null);
-    setShowBugModal(true);
-  }, []);
-
-  useEffect(() => {
-    Events.subscribe<Record<string, never>>("openReportBugModal", openBugModal);
-    return () => {
-      Events.unsubscribe<Record<string, never>>(
-        "openReportBugModal",
-        openBugModal,
-      );
-    };
-  }, [openBugModal]);
-
-  const handleCreateBugSubmit = async (report: BugReport, file?: File) => {
-    setIsSubmitting(true);
-    setSubmitError(null);
-    const error = await submitBugReport(report, file, {
-      adminApiUrl,
-      reporterEmail: user?.email,
-    });
-    setIsSubmitting(false);
-    if (error) {
-      setSubmitError(error);
-    } else {
-      setShowBugModal(false);
-    }
-  };
+  const bugReport = useBugReport(adminApiUrl);
 
   const menuOptions = useMemo(
     () => (options ?? []).filter((option) => isAllowedFor(option, user)),
@@ -124,7 +85,7 @@ export const HeaderOptions: FC<HeaderOptionsProps> = ({
             key={option.title}
             onClick={() => {
               if (option.location.endsWith("#report-bug")) {
-                openBugModal();
+                bugReport.open();
                 return;
               }
               navigate(option.location, {
@@ -158,12 +119,13 @@ export const HeaderOptions: FC<HeaderOptionsProps> = ({
       ) : null}
 
       <BugFormModal
-        show={showBugModal}
-        onHide={() => setShowBugModal(false)}
-        onSubmit={(report, file) => void handleCreateBugSubmit(report, file)}
+        show={bugReport.show}
+        onHide={bugReport.close}
+        onSubmit={(report, file) => void bugReport.submit(report, file)}
         categories={BUG_CATEGORIES}
-        isSubmitting={isSubmitting}
-        errorMessage={submitError}
+        isSubmitting={bugReport.isSubmitting}
+        isReadOnly={isReadOnly}
+        errorMessage={bugReport.error}
       />
     </>
   );

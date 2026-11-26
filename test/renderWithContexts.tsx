@@ -62,6 +62,8 @@ export interface Contexts {
   sessionInfo?: () => Promise<ResponseModel<SessionInfoResponse>>;
   /** Address of the notification service; no provider without it. */
   notificationsUrl?: string;
+  /** How long a session token lasts, for the session provider. */
+  sessionLifetimeMs?: number;
 }
 
 /**
@@ -77,6 +79,7 @@ export function renderWithContexts(ui: ReactElement, contexts: Contexts = {}) {
     requestLogout = () => Promise.resolve(new ResponseModel<void>()),
     notificationsUrl,
     sessionInfo = sessionInfoOf(user),
+    sessionLifetimeMs,
   } = contexts;
   const withNotifications = (children: ReactNode) =>
     notificationsUrl ? (
@@ -93,6 +96,7 @@ export function renderWithContexts(ui: ReactElement, contexts: Contexts = {}) {
         loginUrl="/login"
         getSessionInfo={sessionInfo}
         requestLogout={requestLogout}
+        sessionLifetimeMs={sessionLifetimeMs}
       >
         <MenuContext.Provider
           value={{

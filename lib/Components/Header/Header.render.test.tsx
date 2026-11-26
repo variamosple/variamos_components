@@ -5,6 +5,7 @@ import {
   axeViolations,
   renderWithContexts,
   routerOf,
+  sessionInfoOf,
   userOf,
 } from "../../../test/renderWithContexts";
 import { Events } from "../../Common";
@@ -222,6 +223,57 @@ describe("Header", () => {
       "Nothing happens on save.",
     );
     expect(within(form).getByText("Selected file: trace.txt")).toBeVisible();
+  });
+
+  it("checks the session after a refused report, and keeps the report when it is over", async () => {
+    const refused = (input: RequestInfo | URL) =>
+      String(input) === "/bugs"
+        ? Promise.resolve(
+            Response.json(
+              { errorCode: 401, message: "Unauthorized" },
+              { status: 401 },
+            ),
+          )
+        : emptyAnswer();
+    vi.stubGlobal("fetch", vi.fn(refused));
+    const user = userOf();
+    let sessionOpen = true;
+    const sessionInfo = vi.fn(() => sessionInfoOf(sessionOpen ? user : null)());
+    renderWithContexts(<Header signInUrl="/login" />, {
+      user,
+      sessionInfo,
+      notificationsUrl: "https://notifications.example.test",
+    });
+    await screen.findByText(user.name);
+
+    Events.publish("openReportBugModal", {});
+    const form = await screen.findByRole("dialog", {
+      name: "Report a New Bug",
+    });
+    await userEvent.type(within(form).getByLabelText("Title *"), "Save fails");
+    await userEvent.type(
+      within(form).getByLabelText("Description *"),
+      "Nothing happens on save.",
+    );
+    const checks = sessionInfo.mock.calls.length;
+    sessionOpen = false;
+    await userEvent.click(
+      within(form).getByRole("button", { name: "Report Bug" }),
+    );
+
+    expect(await within(form).findByRole("alert")).toHaveTextContent(
+      "Unauthorized",
+    );
+    await vi.waitFor(() =>
+      expect(sessionInfo).toHaveBeenCalledTimes(checks + 1),
+    );
+    await vi.waitFor(() =>
+      expect(
+        within(form).getByRole("button", { name: "Report Bug" }),
+      ).toBeDisabled(),
+    );
+    expect(screen.getByText(user.name)).toBeInTheDocument();
+    expect(within(form).getByLabelText("Title *")).toHaveValue("Save fails");
   });
 
   it("goes home from the logo and to the content from the skip link", async () => {

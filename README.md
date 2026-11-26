@@ -36,6 +36,14 @@ Also since 0.9.0:
 
 Since 0.9.1 the bug report form names the file chosen and can remove it; a cancelled file dialog no longer keeps, and sends, the file chosen before. The form cannot be closed while it is sending, and it keeps its text and file when the report is refused.
 
+Since 0.10.0 no unsaved input is lost when the connection or the session is lost:
+
+- A form says whether it holds unsaved input with `useUnsavedInput(holdsInput)`. `isUnsavedInput(initial, current)` gives the rule used everywhere: a field differs from the value the form opened with, blanks aside, or a file was chosen. While a form holds input, the browser asks before the tab is closed or reloaded; `hasUnsavedInput()` and `useHasUnsavedInput()` tell the page.
+- Past the lifetime of a session token without an answer of the admin (`sessionLifetimeMs` of `SessionProvider`, 15 minutes by default, as `VARIAMOS_JWT_EXP_IN_SECONDS`), the page becomes read only: `useSession().isReadOnly` is `true`, `AuthWrapper` says that the input is kept and sends no form of the page, and the fields stay editable and can be copied. When the admin answers again, the session is renewed and the page goes on.
+- When the admin says that the session is over (401, 403) while a form holds input, the page is not left: the user stays shown, `isSessionClosed` and `isReadOnly` are `true`, and `AuthWrapper` offers to sign in again in a new tab (the page goes on once the session is back) or here, after saying that the input would be lost. Once the input is dropped, the page goes to the sign-in page as before. Without input, nothing changes.
+- `useSession().checkSession()` checks the session at once: call it when a service answers 401, so that an expired session is renewed, or an ended one said, instead of leaving the page. The bug report form does so after a refusal.
+- The texts of the components are in English, Spanish or French, after `<html lang>` (English for any other language).
+
 ## Development
 
 Requires Node 26 (`.nvmrc`, `.mise.toml`). `npm install` sets up the Git hooks: Biome and cspell on the staged files before a commit, the conventional commit format, and typecheck, lint and tests before a push.
