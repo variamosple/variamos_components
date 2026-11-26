@@ -32,6 +32,23 @@ interface SessionContextType {
    * proxy error): the user is kept and the check is tried again.
    */
   isServerUnreachable: boolean;
+  /**
+   * Nothing can be saved: the admin has not answered for longer than a
+   * session token lasts, or it said that the session is over while a form
+   * holds unsaved input. The page and its input are kept (TRV-65).
+   */
+  isReadOnly: boolean;
+  /**
+   * The admin said that the session is over, and the page is kept for the
+   * unsaved input of a form: the user stays shown until the input is copied
+   * or dropped, or until a new sign-in.
+   */
+  isSessionClosed: boolean;
+  /**
+   * Checks the session now. Call it when a service refuses a request with
+   * 401: an expired session is renewed, an ended one is said.
+   */
+  checkSession: () => void;
   signIn: (credentials: Credentials) => Promise<ResponseModel<singInResponse>>;
   signInAsGuest: () => Promise<ResponseModel<singInResponse>>;
   signUp: (
@@ -63,6 +80,12 @@ export interface SessionProviderProps {
   requestSignUp?: (
     request: UserRegistration,
   ) => Promise<ResponseModel<unknown>>;
+  /**
+   * How long a session token lasts (VARIAMOS_JWT_EXP_IN_SECONDS of the
+   * admin), 15 minutes by default: past it without an answer of the admin,
+   * the page becomes read only.
+   */
+  sessionLifetimeMs?: number;
   children: ReactNode;
 }
 
@@ -73,17 +96,14 @@ export const SessionProvider: FC<SessionProviderProps> = ({
   requestSignIn,
   requestSignInAsGuest,
   requestLogout,
+  sessionLifetimeMs,
   children,
 }) => {
   const isPageActive = usePageVisibility();
-  const {
-    user,
-    isLoading,
-    setIsLoading,
-    isServerUnreachable,
-    applyAnswer,
-    clearSession,
-  } = useWatchedSession(getSessionInfo, isPageActive);
+  // isServerUnreachable, isReadOnly, isSessionClosed and checkSession go to
+  // the page as they are
+  const { user, isLoading, setIsLoading, applyAnswer, clearSession, ...state } =
+    useWatchedSession(getSessionInfo, isPageActive, sessionLifetimeMs);
   const isAuthenticated = user !== null;
 
   // The session lives in the admin cookie: a token kept by an older
@@ -169,7 +189,7 @@ export const SessionProvider: FC<SessionProviderProps> = ({
       value={{
         user,
         isAuthenticated,
-        isServerUnreachable,
+        ...state,
         logout,
         signUp,
         signIn,

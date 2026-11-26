@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { Alert, Button, Form, Modal } from "react-bootstrap";
+import { isUnsavedInput, useUnsavedInput } from "../../Hooks/unsavedInput";
 import { BUG_COMPONENTS } from "./bugComponents";
 import { bugFormErrors, TITLE_MAX_LENGTH } from "./bugFormErrors";
 import type { BugReport } from "./submitBugReport";
@@ -18,6 +19,8 @@ interface BugFormModalProps {
   onSubmit: (data: BugReport, file?: File) => void;
   categories: string[];
   isSubmitting: boolean;
+  /** Nothing can be saved (lost connection, ended session): no sending. */
+  isReadOnly?: boolean;
   /** Why the last submission failed, shown above the form. */
   errorMessage?: string | null;
 }
@@ -79,6 +82,7 @@ export const BugFormModal: FC<BugFormModalProps> = ({
   onSubmit,
   categories,
   isSubmitting,
+  isReadOnly = false,
   errorMessage,
 }) => {
   const [title, setTitle] = useState("");
@@ -91,17 +95,26 @@ export const BugFormModal: FC<BugFormModalProps> = ({
   // The dialog is announced by its title
   const titleId = useId();
   const errors = submitted ? bugFormErrors({ title, description }) : {};
+  const defaultCategory = categories[0] || "Other";
+  // The session keeps the page while the report holds input (TRV-65)
+  const holdsInput =
+    show &&
+    isUnsavedInput(
+      { category: defaultCategory },
+      { title, description, category, component, file: selectedFile },
+    );
+  useUnsavedInput(holdsInput);
 
   useEffect(() => {
     if (show) {
       setTitle("");
       setDescription("");
-      setCategory(categories[0] || "Other");
+      setCategory(defaultCategory);
       setComponent("");
       setSelectedFile(null);
       setSubmitted(false);
     }
-  }, [show, categories]);
+  }, [show, defaultCategory]);
 
   const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -220,7 +233,11 @@ export const BugFormModal: FC<BugFormModalProps> = ({
           <Button variant="secondary" onClick={onHide} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button variant="primary" type="submit" disabled={isSubmitting}>
+          <Button
+            variant="primary"
+            type="submit"
+            disabled={isSubmitting || isReadOnly}
+          >
             {isSubmitting ? "Creating..." : "Report Bug"}
           </Button>
         </Modal.Footer>

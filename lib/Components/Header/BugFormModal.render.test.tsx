@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { axeViolations } from "../../../test/renderWithContexts";
+import { hasUnsavedInput } from "../../Hooks/unsavedInput";
 import { BugFormModal } from "./BugFormModal";
 
 const CATEGORIES = ["Editor", "Model", "Other"];
@@ -146,6 +147,30 @@ describe("BugFormModal", () => {
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
     expect(onHide).toHaveBeenCalledWith(expect.anything());
+  });
+
+  it("says that it holds input once something is typed, not before", async () => {
+    renderForm();
+    expect(hasUnsavedInput()).toBe(false);
+
+    await userEvent.type(screen.getByLabelText("Title *"), "  ");
+    expect(hasUnsavedInput()).toBe(false);
+    await userEvent.type(screen.getByLabelText("Description *"), "Crash");
+    expect(hasUnsavedInput()).toBe(true);
+
+    await userEvent.clear(screen.getByLabelText("Description *"));
+    expect(hasUnsavedInput()).toBe(false);
+    await userEvent.selectOptions(screen.getByLabelText("Category *"), "Model");
+    expect(hasUnsavedInput()).toBe(true);
+  });
+
+  it("sends nothing while nothing can be saved, and keeps the input", async () => {
+    const { onSubmit } = renderForm({ isReadOnly: true });
+
+    await userEvent.type(screen.getByLabelText("Title *"), "Crash");
+    expect(screen.getByRole("button", { name: "Report Bug" })).toBeDisabled();
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Title *")).toHaveValue("Crash");
   });
 
   it("has no accessibility violation", async () => {

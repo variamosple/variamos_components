@@ -84,15 +84,19 @@ describe("watchSession", () => {
     stop();
   });
 
-  it("stops checking once the admin says the session is over", async () => {
-    const load = answersInOrder(signedIn, signedOut);
+  it("keeps checking once a minute after the session is over, until stopped", async () => {
+    // A page kept for its input sees a new sign-in made in another tab
+    const load = answersInOrder(signedIn, signedOut, signedIn);
     const apply = vi.fn();
-    watchSession(load, apply);
+    const stop = watchSession(load, apply);
 
     await vi.advanceTimersByTimeAsync(60_000);
     expect(apply).toHaveBeenLastCalledWith(signedOut);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(apply).toHaveBeenLastCalledWith(signedIn);
+    stop();
     await vi.advanceTimersByTimeAsync(10 * 60_000);
-    expect(load).toHaveBeenCalledTimes(2);
+    expect(load).toHaveBeenCalledTimes(3);
   });
 
   it("ignores an answer that arrives after it was stopped", async () => {
