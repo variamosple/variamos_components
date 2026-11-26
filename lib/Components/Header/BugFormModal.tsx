@@ -13,6 +13,7 @@ import { DiscardInputPrompt, useDiscardConfirmation } from "../DiscardInput";
 import { BUG_COMPONENTS } from "./bugComponents";
 import { bugFormErrors, TITLE_MAX_LENGTH } from "./bugFormErrors";
 import type { BugReport } from "./submitBugReport";
+import type { BugReportPrefill } from "./useBugReport";
 
 interface BugFormModalProps {
   show: boolean;
@@ -24,7 +25,11 @@ interface BugFormModalProps {
   isReadOnly?: boolean;
   /** Why the last submission failed, shown above the form. */
   errorMessage?: string | null;
+  /** What the form opens with (openBugReport). */
+  prefill?: BugReportPrefill;
 }
+
+const NO_PREFILL: BugReportPrefill = Object.freeze({});
 
 interface AttachmentFieldProps {
   selectedFile: File | null;
@@ -116,6 +121,62 @@ const BugFormFooter: FC<BugFormFooterProps> = ({
   </Modal.Footer>
 );
 
+/** The fields of the form, set again each time it opens. */
+function useBugFields(
+  show: boolean,
+  defaultCategory: string,
+  prefill: BugReportPrefill,
+) {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("");
+  const [component, setComponent] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  // Messages appear after the first submission attempt only
+  const [submitted, setSubmitted] = useState(false);
+
+  useEffect(() => {
+    if (show) {
+      setTitle(prefill.title ?? "");
+      setDescription(prefill.description ?? "");
+      setCategory(defaultCategory);
+      setComponent("");
+      setSelectedFile(null);
+      setSubmitted(false);
+    }
+  }, [show, defaultCategory, prefill]);
+
+  // A report with input asks before it is closed (UX-08), and the session
+  // keeps the page while it holds input (TRV-65). What it opened with is
+  // not input: a filled form left as it is closes at once.
+  const holdsInput =
+    show &&
+    isUnsavedInput(
+      {
+        title: prefill.title,
+        description: prefill.description,
+        category: defaultCategory,
+      },
+      { title, description, category, component, file: selectedFile },
+    );
+
+  return {
+    holdsInput,
+    title,
+    setTitle,
+    description,
+    setDescription,
+    category,
+    setCategory,
+    component,
+    setComponent,
+    selectedFile,
+    setSelectedFile,
+    submitted,
+    setSubmitted,
+  };
+}
+
 export const BugFormModal: FC<BugFormModalProps> = ({
   show,
   onHide,
@@ -124,40 +185,30 @@ export const BugFormModal: FC<BugFormModalProps> = ({
   isSubmitting,
   isReadOnly = false,
   errorMessage,
+  prefill = NO_PREFILL,
 }) => {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("");
-  const [component, setComponent] = useState("");
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  // Messages appear after the first submission attempt only
-  const [submitted, setSubmitted] = useState(false);
+  const defaultCategory = categories[0] || "Other";
+  const {
+    title,
+    setTitle,
+    description,
+    setDescription,
+    category,
+    setCategory,
+    component,
+    setComponent,
+    selectedFile,
+    setSelectedFile,
+    submitted,
+    setSubmitted,
+    holdsInput,
+  } = useBugFields(show, defaultCategory, prefill);
   // The dialog is announced by its title
   const titleId = useId();
   const errors = submitted ? bugFormErrors({ title, description }) : {};
-  const defaultCategory = categories[0] || "Other";
-  // A report with input asks before it is closed (UX-08), and the session
-  // keeps the page while it holds input (TRV-65)
-  const holdsInput =
-    show &&
-    isUnsavedInput(
-      { category: defaultCategory },
-      { title, description, category, component, file: selectedFile },
-    );
   const closing = useDiscardConfirmation({ holdsInput, onClose: onHide });
   // No way to close while sending, as Cancel is locked (EV-84)
   const requestClose = isSubmitting ? undefined : closing.requestClose;
-
-  useEffect(() => {
-    if (show) {
-      setTitle("");
-      setDescription("");
-      setCategory(defaultCategory);
-      setComponent("");
-      setSelectedFile(null);
-      setSubmitted(false);
-    }
-  }, [show, defaultCategory]);
 
   const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();

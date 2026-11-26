@@ -11,7 +11,7 @@ import {
 import { Events } from "../../Common";
 import { ResponseModel } from "../../Model";
 import { LOGOUT_FAILED } from "./HeaderOptions";
-import { Header } from "./index";
+import { Header, openBugReport } from "./index";
 
 // The notification provider opens a socket once signed in
 vi.mock("socket.io-client", () => ({
@@ -130,6 +130,36 @@ describe("Header", () => {
 
     Events.publish("openReportBugModal", {});
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("opens the bug form filled, and closes it at once while untouched", async () => {
+    const user = userOf();
+    renderWithContexts(<Header signInUrl="/login" />, {
+      user,
+      notificationsUrl: "https://notifications.example.test",
+    });
+    await screen.findByText(user.name);
+
+    openBugReport({ title: "Error on /roles", description: "Cannot read x" });
+    const form = await screen.findByRole("dialog", {
+      name: "Report a New Bug",
+    });
+    expect(within(form).getByLabelText("Title *")).toHaveValue(
+      "Error on /roles",
+    );
+    expect(within(form).getByLabelText("Description *")).toHaveValue(
+      "Cannot read x",
+    );
+    await userEvent.click(within(form).getByRole("button", { name: "Cancel" }));
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+
+    // Opened again from the menu, it is empty; a published text that is not
+    // a string is not taken
+    Events.publish("openReportBugModal", { title: 42 });
+    const again = await screen.findByRole("dialog");
+    expect(within(again).getByLabelText("Title *")).toHaveValue("");
   });
 
   it.each([

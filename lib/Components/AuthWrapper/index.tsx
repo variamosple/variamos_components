@@ -1,9 +1,17 @@
 import type React from "react";
-import { type ReactNode, useCallback, useEffect, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { Alert, Button, Spinner } from "react-bootstrap";
+import { createPortal } from "react-dom";
 import { type PageTexts, pageText } from "../../Common/pageText";
 import { useRouter, useSession } from "../../Context";
 import { addressWithoutToken } from "./addressWithoutToken";
+import { useTopDialogSlot } from "./topDialog";
 
 interface AuthWrapperProps {
   redirectPath: string;
@@ -26,9 +34,13 @@ export const AuthWrapper: React.FC<AuthWrapperProps> = ({
   const { isAuthenticated, isLoading, isServerUnreachable, isReadOnly } =
     useSession();
   const { navigate } = useRouter();
+  // A session this page had, ended since: the sign-in page says so
+  const wasSignedInRef = useRef(false);
+  if (isAuthenticated) wasSignedInRef.current = true;
 
   const redirectToSignIn = useCallback(() => {
     const searchParams = new URLSearchParams();
+    if (wasSignedInRef.current) searchParams.set("reason", "session-expired");
     searchParams.set("redirectTo", encodeURIComponent(window.location.href));
 
     setIsRedirecting(true);
@@ -95,9 +107,11 @@ export const AuthWrapper: React.FC<AuthWrapperProps> = ({
 };
 
 /**
- * The banner stays at the top of the screen and above an open dialog, whose
- * backdrop would otherwise cover it: its buttons stay usable while a form
- * in a dialog holds the input (the Bootstrap dialog is at 1055).
+ * The banner stays at the top of the screen, above the page. While a dialog
+ * is open, it goes into the dialog on top, first: the dialog keeps the focus
+ * inside it and hides the rest of the page from screen readers, so that the
+ * banner is reached from the keyboard and announced there (EV-96). Above
+ * the content of the dialog too (the Bootstrap dialog is at 1055).
  */
 const BANNER_STYLE = Object.freeze({
   position: "sticky",
@@ -106,10 +120,18 @@ const BANNER_STYLE = Object.freeze({
 } as const);
 
 /**
- * What the page says about its session, above the page: nothing while the
- * session is open and the admin answers.
+ * What the page says about its session, above the page or in the dialog on
+ * top: nothing while the session is open and the admin answers.
  */
 const SessionBanner: React.FC<{ onSignInHere: () => void }> = ({
+  onSignInHere,
+}) => {
+  const slot = useTopDialogSlot();
+  const banner = <SessionBannerContent onSignInHere={onSignInHere} />;
+  return slot ? createPortal(banner, slot, "session-banner") : banner;
+};
+
+const SessionBannerContent: React.FC<{ onSignInHere: () => void }> = ({
   onSignInHere,
 }) => {
   const { isServerUnreachable, isReadOnly, isSessionClosed } = useSession();

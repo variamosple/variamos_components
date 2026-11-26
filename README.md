@@ -45,6 +45,13 @@ Since 0.10.0 no unsaved input is lost when the connection or the session is lost
 - The texts of the components are in English, Spanish or French, after `<html lang>` (English for any other language).
 - Closing a form that holds unsaved input asks first (UX-08), and only then: `useDiscardConfirmation({ holdsInput, onClose })` gives `requestClose` for every way of closing (close button, Cancel, Escape, a click outside), and `DiscardInputPrompt` asks "Discard your input?" in the form itself, the focus on "Keep editing". The bug report form does so; it now also closes on Escape and outside when it holds nothing, and still not while it is sending.
 
+Since 0.11.0:
+
+- While a dialog is open, the banner of `AuthWrapper` (lost connection, ended session) goes into the dialog on top, first: the dialog keeps the focus inside it and hides the rest of the page from screen readers, so that the banner is reached from the keyboard and announced. It goes back above the page once the dialog is closed.
+- A session that ends on a page sends it to the sign-in page with `reason=session-expired` before `redirectTo`, so that the sign-in page says why; a visitor never signed in on the page is sent without it. A 401 of a service should only call `checkSession()`: the admin then renews the session or says it is over.
+- `openBugReport({ title, description })` opens the global bug form of the header filled with these texts (the `openReportBugModal` event with this detail; texts only are taken). A filled form left as it is closes at once; what the reporter changes is input as above.
+- `DialogErrorBoundary` goes around a dialog that a page opens (`show`, `onClose`): an error thrown while the dialog renders stays in it, which says so, offers to report it with the global bug form (`canReport`, true by default) and closes; the page keeps its own input instead of being replaced by its error page. The global bug form has one: before, an error in it unmounted the whole application and the input of the page.
+
 ## Development
 
 Requires Node 26 (`.nvmrc`, `.mise.toml`). `npm install` sets up the Git hooks: Biome and cspell on the staged files before a commit, the conventional commit format, and typecheck, lint and tests before a push.

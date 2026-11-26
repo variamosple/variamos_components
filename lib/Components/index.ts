@@ -1,5 +1,6 @@
 export * from "./AuthWrapper";
 export * from "./ConfirmationModal";
+export * from "./DialogErrorBoundary";
 export * from "./DiscardInput";
 export * from "./Footer";
 export * from "./Header";

@@ -43,6 +43,10 @@ describe("AuthWrapper", () => {
       ),
     );
     expect(screen.queryByText("Private page")).not.toBeInTheDocument();
+    // Never signed in on this page: no ended session to tell
+    expect(router.navigate).not.toHaveBeenCalledWith(
+      expect.stringContaining("reason="),
+    );
   });
 
   it("waits, without sending anywhere, when the admin does not answer", async () => {
