@@ -8,7 +8,8 @@ import {
   useState,
 } from "react";
 import { Alert, Button, Form, Modal } from "react-bootstrap";
-import { isUnsavedInput, useUnsavedInput } from "../../Hooks/unsavedInput";
+import { isUnsavedInput } from "../../Hooks/unsavedInput";
+import { DiscardInputPrompt, useDiscardConfirmation } from "../DiscardInput";
 import { BUG_COMPONENTS } from "./bugComponents";
 import { bugFormErrors, TITLE_MAX_LENGTH } from "./bugFormErrors";
 import type { BugReport } from "./submitBugReport";
@@ -76,6 +77,45 @@ const AttachmentField: FC<AttachmentFieldProps> = ({
   );
 };
 
+interface BugFormFooterProps {
+  closing: ReturnType<typeof useDiscardConfirmation>;
+  isSubmitting: boolean;
+  isReadOnly: boolean;
+}
+
+/** Cancel and send, or the question asked before the input is dropped. */
+const BugFormFooter: FC<BugFormFooterProps> = ({
+  closing,
+  isSubmitting,
+  isReadOnly,
+}) => (
+  <Modal.Footer>
+    {closing.isConfirming ? (
+      <DiscardInputPrompt
+        onKeepEditing={closing.keepEditing}
+        onDiscard={closing.discard}
+      />
+    ) : (
+      <>
+        <Button
+          variant="secondary"
+          onClick={closing.requestClose}
+          disabled={isSubmitting}
+        >
+          Cancel
+        </Button>
+        <Button
+          variant="primary"
+          type="submit"
+          disabled={isSubmitting || isReadOnly}
+        >
+          {isSubmitting ? "Creating..." : "Report Bug"}
+        </Button>
+      </>
+    )}
+  </Modal.Footer>
+);
+
 export const BugFormModal: FC<BugFormModalProps> = ({
   show,
   onHide,
@@ -96,14 +136,17 @@ export const BugFormModal: FC<BugFormModalProps> = ({
   const titleId = useId();
   const errors = submitted ? bugFormErrors({ title, description }) : {};
   const defaultCategory = categories[0] || "Other";
-  // The session keeps the page while the report holds input (TRV-65)
+  // A report with input asks before it is closed (UX-08), and the session
+  // keeps the page while it holds input (TRV-65)
   const holdsInput =
     show &&
     isUnsavedInput(
       { category: defaultCategory },
       { title, description, category, component, file: selectedFile },
     );
-  useUnsavedInput(holdsInput);
+  const closing = useDiscardConfirmation({ holdsInput, onClose: onHide });
+  // No way to close while sending, as Cancel is locked (EV-84)
+  const requestClose = isSubmitting ? undefined : closing.requestClose;
 
   useEffect(() => {
     if (show) {
@@ -134,13 +177,12 @@ export const BugFormModal: FC<BugFormModalProps> = ({
   return (
     <Modal
       show={show}
-      onHide={onHide}
-      backdrop="static"
-      keyboard={false}
+      onHide={requestClose}
+      backdrop={isSubmitting ? "static" : true}
+      keyboard={!isSubmitting}
       centered
       aria-labelledby={titleId}
     >
-      {/* No way to close while sending, as Cancel is locked (EV-84) */}
       <Modal.Header closeButton={!isSubmitting}>
         <Modal.Title id={titleId}>Report a New Bug</Modal.Title>
       </Modal.Header>
@@ -229,18 +271,11 @@ export const BugFormModal: FC<BugFormModalProps> = ({
           </Form.Group>
         </Modal.Body>
 
-        <Modal.Footer>
-          <Button variant="secondary" onClick={onHide} disabled={isSubmitting}>
-            Cancel
-          </Button>
-          <Button
-            variant="primary"
-            type="submit"
-            disabled={isSubmitting || isReadOnly}
-          >
-            {isSubmitting ? "Creating..." : "Report Bug"}
-          </Button>
-        </Modal.Footer>
+        <BugFormFooter
+          closing={closing}
+          isSubmitting={isSubmitting}
+          isReadOnly={isReadOnly}
+        />
       </Form>
     </Modal>
   );

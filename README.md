@@ -43,6 +43,7 @@ Since 0.10.0 no unsaved input is lost when the connection or the session is lost
 - When the admin says that the session is over (401, 403) while a form holds input, the page is not left: the user stays shown, `isSessionClosed` and `isReadOnly` are `true`, and `AuthWrapper` offers to sign in again in a new tab (the page goes on once the session is back) or here, after saying that the input would be lost. Once the input is dropped, the page goes to the sign-in page as before. Without input, nothing changes.
 - `useSession().checkSession()` checks the session at once: call it when a service answers 401, so that an expired session is renewed, or an ended one said, instead of leaving the page. The bug report form does so after a refusal.
 - The texts of the components are in English, Spanish or French, after `<html lang>` (English for any other language).
+- Closing a form that holds unsaved input asks first (UX-08), and only then: `useDiscardConfirmation({ holdsInput, onClose })` gives `requestClose` for every way of closing (close button, Cancel, Escape, a click outside), and `DiscardInputPrompt` asks "Discard your input?" in the form itself, the focus on "Keep editing". The bug report form does so; it now also closes on Escape and outside when it holds nothing, and still not while it is sending.
 
 ## Development
 
