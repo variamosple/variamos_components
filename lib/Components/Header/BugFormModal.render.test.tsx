@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { axeViolations } from "../../../test/renderWithContexts";
 import { hasUnsavedInput } from "../../Hooks/unsavedInput";
+import { DISCARD_TEXTS } from "../DiscardInput";
 import { BugFormModal } from "./BugFormModal";
 
 const CATEGORIES = ["Editor", "Model", "Other"];
@@ -141,12 +142,82 @@ describe("BugFormModal", () => {
     expect(onHide).toHaveBeenCalledOnce();
   });
 
-  it("closes on Cancel", async () => {
+  it("closes on Cancel, on Escape and outside, at once when nothing was typed", async () => {
     const { onHide } = renderForm();
 
     await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await userEvent.keyboard("{Escape}");
+    await userEvent.click(screen.getByRole("dialog"));
 
-    expect(onHide).toHaveBeenCalledWith(expect.anything());
+    expect(onHide).toHaveBeenCalledTimes(3);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it.each([
+    [
+      "the close button",
+      () => userEvent.click(screen.getByRole("button", { name: "Close" })),
+    ],
+    [
+      "Cancel",
+      () => userEvent.click(screen.getByRole("button", { name: "Cancel" })),
+    ],
+    ["Escape", () => userEvent.keyboard("{Escape}")],
+    ["a click outside", () => userEvent.click(screen.getByRole("dialog"))],
+  ])("asks before %s drops the input", async (_way, close) => {
+    const { onHide } = renderForm();
+    await userEvent.type(screen.getByLabelText("Title *"), "Crash on save");
+
+    await close();
+
+    expect(onHide).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      DISCARD_TEXTS.question.en,
+    );
+    expect(
+      screen.getByRole("button", { name: DISCARD_TEXTS.keepEditing.en }),
+    ).toHaveFocus();
+  });
+
+  it("keeps the input, or drops it, as answered", async () => {
+    const { onHide } = renderForm();
+    await userEvent.type(screen.getByLabelText("Title *"), "Crash on save");
+
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: DISCARD_TEXTS.keepEditing.en }),
+    );
+    expect(onHide).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Title *")).toHaveValue("Crash on save");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: DISCARD_TEXTS.discard.en }),
+    );
+    expect(onHide).toHaveBeenCalledOnce();
+  });
+
+  it("asks in the language of the page", async () => {
+    document.documentElement.lang = "es";
+    renderForm();
+    await userEvent.type(screen.getByLabelText("Title *"), "Crash");
+
+    await userEvent.keyboard("{Escape}");
+
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      DISCARD_TEXTS.question.es,
+    );
+    document.documentElement.lang = "";
+  });
+
+  it("cannot be closed while sending", async () => {
+    const { onHide } = renderForm({ isSubmitting: true });
+
+    await userEvent.keyboard("{Escape}");
+    await userEvent.click(screen.getByRole("dialog"));
+
+    expect(onHide).not.toHaveBeenCalled();
   });
 
   it("says that it holds input once something is typed, not before", async () => {
