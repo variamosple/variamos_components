@@ -69,6 +69,22 @@ describe("useUnsavedInput", () => {
     expect(hasUnsavedInput()).toBe(false);
   });
 
+  it("does not count a form kept on navigation when the page is left", () => {
+    const kept = renderHook(() =>
+      useUnsavedInput(true, { keptOnNavigation: true }),
+    );
+    // The session and the closing of the tab still count it
+    expect(hasUnsavedInput()).toBe(true);
+    expect(hasUnsavedInput({ leavingPage: true })).toBe(false);
+
+    const page = renderHook(() => useUnsavedInput(true));
+    expect(hasUnsavedInput({ leavingPage: true })).toBe(true);
+    page.unmount();
+    expect(hasUnsavedInput({ leavingPage: true })).toBe(false);
+    kept.unmount();
+    expect(hasUnsavedInput()).toBe(false);
+  });
+
   it("asks the browser to confirm closing the tab only while input is held", () => {
     const add = vi.spyOn(window, "addEventListener");
     const remove = vi.spyOn(window, "removeEventListener");

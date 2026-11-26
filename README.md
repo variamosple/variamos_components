@@ -52,6 +52,12 @@ Since 0.11.0:
 - `openBugReport({ title, description })` opens the global bug form of the header filled with these texts (the `openReportBugModal` event with this detail; texts only are taken). A filled form left as it is closes at once; what the reporter changes is input as above.
 - `DialogErrorBoundary` goes around a dialog that a page opens (`show`, `onClose`): an error thrown while the dialog renders stays in it, which says so, offers to report it with the global bug form (`canReport`, true by default) and closes; the page keeps its own input instead of being replaced by its error page. The global bug form has one: before, an error in it unmounted the whole application and the input of the page.
 
+Since 0.12.0:
+
+- "Logout" in the account menu asks first while a form of the page holds unsaved input (`hasUnsavedInput()`), as leaving the page does: "Keep editing" (focused, also Escape) keeps the page and its input, "Sign out" goes on. Without input it signs out at once, as before. The texts follow `<html lang>` (en, es, fr).
+- `useUnsavedInput(holdsInput, { keptOnNavigation: true })` (also an option of `useDiscardConfirmation`) says that a form stays when the page changes, as the global bug form of the header does. `hasUnsavedInput({ leavingPage: true })` leaves such forms out: a guard of the routes of an application uses it, so that the back button no longer asks while only the global bug form holds input. The session and the closing of the tab still count every form.
+- `DiscardInputPrompt` takes `discardLabel`, the name of the answer that drops the input ("Discard" by default).
+
 ## Development
 
 Requires Node 26 (`.nvmrc`, `.mise.toml`). `npm install` sets up the Git hooks: Biome and cspell on the staged files before a commit, the conventional commit format, and typecheck, lint and tests before a push.

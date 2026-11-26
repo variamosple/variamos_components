@@ -206,7 +206,13 @@ export const BugFormModal: FC<BugFormModalProps> = ({
   // The dialog is announced by its title
   const titleId = useId();
   const errors = submitted ? bugFormErrors({ title, description }) : {};
-  const closing = useDiscardConfirmation({ holdsInput, onClose: onHide });
+  // The form lives in the header: a change of page keeps it, and so does
+  // not ask for it
+  const closing = useDiscardConfirmation({
+    holdsInput,
+    onClose: onHide,
+    keptOnNavigation: true,
+  });
   // No way to close while sending, as Cancel is locked (EV-84)
   const requestClose = isSubmitting ? undefined : closing.requestClose;
 

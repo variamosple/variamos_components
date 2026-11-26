@@ -1,10 +1,11 @@
-import { type FC, useCallback, useId, useMemo, useState } from "react";
-import { Alert, NavDropdown } from "react-bootstrap";
+import { type FC, useId, useMemo } from "react";
+import { NavDropdown } from "react-bootstrap";
 import { isAllowedFor } from "../../Common/isAllowedFor";
 import { useMenu, useRouter, useSession } from "../../Context";
 import { mapToWebTarget } from "../../Model";
 import { DialogErrorBoundary } from "../DialogErrorBoundary";
 import { BugFormModal } from "./BugFormModal";
+import { SignOutQuestion, useSignOut } from "./signOut";
 import { useBugReport } from "./useBugReport";
 
 export interface HeaderOptionsProps {
@@ -16,10 +17,6 @@ export interface HeaderOptionsProps {
  * the page, so that bug reports go to "/bugs" there.
  */
 export const DEFAULT_ADMIN_API_URL = "/v1";
-
-/** Shown when the admin could not close the session. */
-export const LOGOUT_FAILED =
-  "Sign out failed: you are still signed in. Please try again.";
 
 const BUG_CATEGORIES = [
   "Editor",
@@ -39,13 +36,7 @@ export const HeaderOptions: FC<HeaderOptionsProps> = ({
   const { navigate } = useRouter();
   const dropdownId = useId();
 
-  const [logoutFailed, setLogoutFailed] = useState(false);
-
-  // A failed sign out is said: before, nothing happened (ADM-N14)
-  const signOut = useCallback(() => {
-    setLogoutFailed(false);
-    void logout().then((done) => setLogoutFailed(!done));
-  }, [logout]);
+  const signOut = useSignOut(logout);
 
   // The address given by the application. The library cannot read the
   // environment of the application: Vite replaced import.meta.env when the
@@ -103,21 +94,11 @@ export const HeaderOptions: FC<HeaderOptionsProps> = ({
         ) : null}
 
         {isAuthenticated ? (
-          <NavDropdown.Item onClick={signOut}>Logout</NavDropdown.Item>
+          <NavDropdown.Item onClick={signOut.request}>Logout</NavDropdown.Item>
         ) : null}
       </NavDropdown>
 
-      {logoutFailed ? (
-        <Alert
-          variant="danger"
-          dismissible
-          onClose={() => setLogoutFailed(false)}
-          className="position-fixed top-0 end-0 m-3"
-          style={{ zIndex: 1080 }}
-        >
-          {LOGOUT_FAILED}
-        </Alert>
-      ) : null}
+      <SignOutQuestion signOut={signOut} />
 
       {/* The form sits in the header, above every page: an error in it
           would otherwise unmount the whole application. Reporting it with

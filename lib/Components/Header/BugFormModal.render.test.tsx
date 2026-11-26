@@ -228,6 +228,8 @@ describe("BugFormModal", () => {
     expect(hasUnsavedInput()).toBe(false);
     await userEvent.type(screen.getByLabelText("Description *"), "Crash");
     expect(hasUnsavedInput()).toBe(true);
+    // It lives in the header: leaving the page drops nothing of it
+    expect(hasUnsavedInput({ leavingPage: true })).toBe(false);
 
     await userEvent.clear(screen.getByLabelText("Description *"));
     expect(hasUnsavedInput()).toBe(false);

@@ -9,14 +9,21 @@ import {
   userOf,
 } from "../../../test/renderWithContexts";
 import { Events } from "../../Common";
+import { useUnsavedInput } from "../../Hooks/unsavedInput";
 import { ResponseModel } from "../../Model";
-import { LOGOUT_FAILED } from "./HeaderOptions";
 import { Header, openBugReport } from "./index";
+import { LOGOUT_FAILED } from "./signOut";
 
 // The notification provider opens a socket once signed in
 vi.mock("socket.io-client", () => ({
   io: () => ({ on: vi.fn(), disconnect: vi.fn() }),
 }));
+
+// A form of the page that holds unsaved input
+const PageForm = () => {
+  useUnsavedInput(true);
+  return null;
+};
 
 const emptyAnswer = () => Promise.resolve(Response.json({ data: [] }));
 
@@ -90,6 +97,92 @@ describe("Header", () => {
 
     expect(requestLogout).toHaveBeenCalledWith();
   });
+
+  it("asks before signing out drops unsaved input, and keeps it on demand", async () => {
+    const user = userOf();
+    const requestLogout = vi.fn(() =>
+      Promise.resolve(new ResponseModel<void>()),
+    );
+    renderWithContexts(
+      <>
+        <Header signInUrl="/login" />
+        <PageForm />
+      </>,
+      {
+        user,
+        requestLogout,
+        notificationsUrl: "https://notifications.example.test",
+      },
+    );
+
+    await userEvent.click(await screen.findByText(user.name));
+    await userEvent.click(screen.getByRole("button", { name: "Logout" }));
+    const question = await screen.findByRole("dialog", {
+      name: "Sign out? What you typed on this page will be lost.",
+    });
+    // The answer that loses nothing has the focus
+    const keep = within(question).getByRole("button", {
+      name: "Keep editing",
+    });
+    await waitFor(() => expect(keep).toHaveFocus());
+    await userEvent.click(keep);
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    expect(requestLogout).not.toHaveBeenCalled();
+
+    // Escape keeps editing too
+    await userEvent.click(screen.getByText(user.name));
+    await userEvent.click(screen.getByRole("button", { name: "Logout" }));
+    await screen.findByRole("dialog");
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    expect(requestLogout).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByText(user.name));
+    await userEvent.click(screen.getByRole("button", { name: "Logout" }));
+    await userEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: "Sign out",
+      }),
+    );
+    expect(requestLogout).toHaveBeenCalledWith();
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+  });
+
+  // cspell:disable -- texts in Spanish
+  it("asks before signing out in the language of the page", async () => {
+    document.documentElement.lang = "es";
+    try {
+      const user = userOf();
+      renderWithContexts(
+        <>
+          <Header signInUrl="/login" />
+          <PageForm />
+        </>,
+        { user, notificationsUrl: "https://notifications.example.test" },
+      );
+      await userEvent.click(await screen.findByText(user.name));
+      await userEvent.click(screen.getByRole("button", { name: "Logout" }));
+      const question = await screen.findByRole("dialog");
+      expect(question).toHaveTextContent(
+        "¿Cerrar sesión? Lo que escribió en esta página se perderá.",
+      );
+      expect(
+        within(question).getByRole("button", { name: "Seguir editando" }),
+      ).toBeInTheDocument();
+      expect(
+        within(question).getByRole("button", { name: "Cerrar sesión" }),
+      ).toBeInTheDocument();
+    } finally {
+      document.documentElement.lang = "";
+    }
+  });
+  // cspell:enable
 
   it("says when the sign out failed", async () => {
     const user = userOf();
