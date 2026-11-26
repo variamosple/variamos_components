@@ -3,6 +3,7 @@ import { Alert, NavDropdown } from "react-bootstrap";
 import { isAllowedFor } from "../../Common/isAllowedFor";
 import { useMenu, useRouter, useSession } from "../../Context";
 import { mapToWebTarget } from "../../Model";
+import { DialogErrorBoundary } from "../DialogErrorBoundary";
 import { BugFormModal } from "./BugFormModal";
 import { useBugReport } from "./useBugReport";
 
@@ -118,15 +119,25 @@ export const HeaderOptions: FC<HeaderOptionsProps> = ({
         </Alert>
       ) : null}
 
-      <BugFormModal
+      {/* The form sits in the header, above every page: an error in it
+          would otherwise unmount the whole application. Reporting it with
+          the same form would fail again. */}
+      <DialogErrorBoundary
         show={bugReport.show}
-        onHide={bugReport.close}
-        onSubmit={(report, file) => void bugReport.submit(report, file)}
-        categories={BUG_CATEGORIES}
-        isSubmitting={bugReport.isSubmitting}
-        isReadOnly={isReadOnly}
-        errorMessage={bugReport.error}
-      />
+        onClose={bugReport.close}
+        canReport={false}
+      >
+        <BugFormModal
+          show={bugReport.show}
+          onHide={bugReport.close}
+          onSubmit={(report, file) => void bugReport.submit(report, file)}
+          categories={BUG_CATEGORIES}
+          isSubmitting={bugReport.isSubmitting}
+          isReadOnly={isReadOnly}
+          errorMessage={bugReport.error}
+          prefill={bugReport.prefill}
+        />
+      </DialogErrorBoundary>
     </>
   );
 };

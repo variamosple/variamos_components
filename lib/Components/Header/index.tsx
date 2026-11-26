@@ -12,6 +12,7 @@ import { SubHeader } from "./SubHeader";
 import styles from "./styles.module.css";
 
 export { DEFAULT_MAIN_CONTENT_ID } from "./keyboardAccess";
+export { type BugReportPrefill, openBugReport } from "./useBugReport";
 
 export interface HeaderProps {
   logoUrl?: string;

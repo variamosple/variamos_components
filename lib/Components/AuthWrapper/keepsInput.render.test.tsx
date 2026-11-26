@@ -1,6 +1,7 @@
-import { act, screen } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
+import { Modal } from "react-bootstrap";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   renderWithContexts,
@@ -73,6 +74,42 @@ function renderPage(sessionLifetimeMs?: number) {
   return { admin, sessionInfo, router, onSave, user };
 }
 
+/** A page with input, and a dialog it opens. */
+const DialogPage = () => {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <NoteForm onSave={vi.fn()} />
+      <button type="button" onClick={() => setOpen(true)}>
+        Open dialog
+      </button>
+      <Modal show={open} onHide={() => setOpen(false)} aria-label="Comment">
+        <Modal.Body>
+          <label>
+            Comment
+            <input />
+          </label>
+          <button type="button" onClick={() => setOpen(false)}>
+            Done
+          </button>
+        </Modal.Body>
+      </Modal>
+    </>
+  );
+};
+
+function renderDialogPage() {
+  const { admin, sessionInfo } = adminOf();
+  renderWithContexts(
+    <AuthWrapper redirectPath="/login">
+      <DialogPage />
+    </AuthWrapper>,
+    { router: routerOf(), sessionInfo },
+  );
+  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+  return { admin, user };
+}
+
 const typeNote = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.type(await screen.findByLabelText("Note"), "Half a report");
 };
@@ -138,7 +175,43 @@ describe("AuthWrapper keeps the input of the page", () => {
     await user.clear(screen.getByLabelText("Note"));
     await act(() => vi.advanceTimersByTimeAsync(1000));
     expect(router.navigate).toHaveBeenCalledWith(
-      expect.stringMatching(/^\/login\?redirectTo=/),
+      expect.stringMatching(/^\/login\?reason=session-expired&redirectTo=/),
+    );
+  });
+
+  it("puts the banner into an open dialog, reached from the keyboard", async () => {
+    const page = renderDialogPage();
+    await typeNote(page.user);
+    await page.user.click(screen.getByRole("button", { name: "Open dialog" }));
+    const dialog = await screen.findByRole("dialog");
+
+    page.admin.state = "signed-out";
+    await minutes(1);
+    const banner = within(dialog).getByRole("alert");
+    expect(banner).toHaveTextContent(SESSION_TEXTS.sessionClosed.en);
+    // Only one banner: the one of the page went into the dialog
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+
+    // The dialog keeps the focus inside it: the banner comes before its form
+    within(dialog).getByLabelText("Comment").focus();
+    await page.user.tab({ shift: true });
+    expect(
+      within(banner).getByRole("button", { name: SESSION_TEXTS.signInHere.en }),
+    ).toHaveFocus();
+    await page.user.tab({ shift: true });
+    expect(
+      within(banner).getByRole("button", {
+        name: SESSION_TEXTS.signInNewTab.en,
+      }),
+    ).toHaveFocus();
+
+    // The dialog closed, the banner is back above the page
+    await page.user.click(within(dialog).getByRole("button", { name: "Done" }));
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      SESSION_TEXTS.sessionClosed.en,
     );
   });
 
@@ -191,7 +264,7 @@ describe("AuthWrapper keeps the input of the page", () => {
     );
     await act(() => vi.advanceTimersByTimeAsync(1000));
     expect(router.navigate).toHaveBeenCalledWith(
-      expect.stringMatching(/^\/login\?redirectTo=/),
+      expect.stringMatching(/^\/login\?reason=session-expired&redirectTo=/),
     );
   });
 
@@ -203,7 +276,7 @@ describe("AuthWrapper keeps the input of the page", () => {
     await minutes(1);
     await act(() => vi.advanceTimersByTimeAsync(1000));
     expect(router.navigate).toHaveBeenCalledWith(
-      expect.stringMatching(/^\/login\?redirectTo=/),
+      expect.stringMatching(/^\/login\?reason=session-expired&redirectTo=/),
     );
     expect(screen.queryByLabelText("Note")).not.toBeInTheDocument();
   });
