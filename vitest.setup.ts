@@ -19,6 +19,21 @@ if (typeof window !== "undefined" && !window.matchMedia) {
   });
 }
 
-afterEach(() => {
+// The transitions of react-bootstrap (Modal, Offcanvas, Fade) end on a
+// timer of dom-helpers: the CSS duration, 0 in jsdom, plus 5 ms. Unmounting
+// does not clear it, and it is a timer of Node, which outlives jsdom: when
+// the last test of a file ends within those 5 ms, it fires once document is
+// gone and Vitest reports "document is not defined". Node fires its timers
+// in the order they are due, so waiting longer than that delay, after the
+// unmount, lets every such timer fire while jsdom is still there. The real
+// setTimeout is kept here, so that a test left on fake timers does not stop
+// the wait.
+const TRANSITION_END_DELAY_MS = 10;
+const realSetTimeout = globalThis.setTimeout;
+
+afterEach(async () => {
   cleanup();
+  await new Promise((resolve) => {
+    realSetTimeout(resolve, TRANSITION_END_DELAY_MS);
+  });
 });
