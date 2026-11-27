@@ -19,6 +19,9 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "@vitest/*"
         update-types: ["version-update:semver-major"]
+      # jest-dom 8 requires Vitest 5 (peer vitest >=5 <6): it moves with Vitest
+      - dependency-name: "@testing-library/jest-dom"
+        update-types: ["version-update:semver-major"]
       # Types follow the Node version in use: 26 until Node 28 is LTS
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
