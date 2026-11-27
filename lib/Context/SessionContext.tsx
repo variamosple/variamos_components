@@ -14,14 +14,9 @@ import type {
   singInResponse,
   UserRegistration,
 } from "../Model";
-import { keepGuestId, readGuestId } from "./guestId";
-import { readSessionAnswer } from "./sessionAnswer";
 import { forgetStoredSessionToken } from "./storedSessionToken";
-import {
-  publishNavigation,
-  UNAVAILABLE_ANSWER,
-  useWatchedSession,
-} from "./useWatchedSession";
+import { useSignIn } from "./useSignIn";
+import { publishNavigation, useWatchedSession } from "./useWatchedSession";
 
 interface SessionContextType {
   user: SessionUser | null;
@@ -49,7 +44,21 @@ interface SessionContextType {
    * 401: an expired session is renewed, an ended one is said.
    */
   checkSession: () => void;
+  /**
+   * Signs in with a password. When the account has a second factor, the
+   * answer has `data.mfaRequired`, no session is open yet, and the code goes
+   * to verifySecondFactor.
+   */
   signIn: (credentials: Credentials) => Promise<ResponseModel<singInResponse>>;
+  /**
+   * Sends the code of the second factor after signIn, then loads the
+   * session as signIn does: no reload of the page is needed. With
+   * `rememberDevice`, the admin may not ask this browser the code for a while.
+   */
+  verifySecondFactor: (
+    code: string,
+    rememberDevice?: boolean,
+  ) => Promise<ResponseModel<singInResponse>>;
   signInAsGuest: () => Promise<ResponseModel<singInResponse>>;
   signUp: (
     registration: UserRegistration,
@@ -63,8 +72,6 @@ interface SessionContextType {
 
 const SessionContext = createContext<SessionContextType | undefined>(undefined);
 
-const SIGN_IN_ERROR = "Sign in error.";
-
 const SESSION_OVER_CODES = new Set([401, 403]);
 
 export interface SessionProviderProps {
@@ -76,6 +83,11 @@ export interface SessionProviderProps {
   ) => Promise<ResponseModel<singInResponse>>;
   requestSignInAsGuest?: (
     guestId?: string | null,
+  ) => Promise<ResponseModel<singInResponse>>;
+  /** POST /auth/sign-in/mfa of the admin, for verifySecondFactor. */
+  requestSignInMfa?: (
+    code: string,
+    rememberDevice: boolean,
   ) => Promise<ResponseModel<singInResponse>>;
   requestSignUp?: (
     request: UserRegistration,
@@ -95,6 +107,7 @@ export const SessionProvider: FC<SessionProviderProps> = ({
   requestSignUp,
   requestSignIn,
   requestSignInAsGuest,
+  requestSignInMfa,
   requestLogout,
   sessionLifetimeMs,
   children,
@@ -112,24 +125,10 @@ export const SessionProvider: FC<SessionProviderProps> = ({
     forgetStoredSessionToken();
   }, []);
 
-  // After a sign in, the session is loaded; its error goes on the answer
-  const completeSignIn = (response: ResponseModel<singInResponse>) =>
-    getSessionInfo()
-      .then((result) => {
-        const answer = readSessionAnswer(result);
-        applyAnswer(answer);
-        if (answer.kind !== "signed-in") {
-          response.withError(
-            result?.errorCode || 500,
-            result?.message ?? SIGN_IN_ERROR,
-          );
-        }
-        return response;
-      })
-      .catch(() => {
-        applyAnswer(UNAVAILABLE_ANSWER);
-        return response.withError(500, SIGN_IN_ERROR);
-      });
+  const { signIn, verifySecondFactor, signInAsGuest } = useSignIn(
+    { getSessionInfo, requestSignIn, requestSignInAsGuest, requestSignInMfa },
+    { applyAnswer, setIsLoading },
+  );
 
   const signUp = (registration: UserRegistration) => {
     if (!requestSignUp) {
@@ -137,32 +136,6 @@ export const SessionProvider: FC<SessionProviderProps> = ({
     }
     setIsLoading(true);
     return requestSignUp(registration).finally(() => setIsLoading(false));
-  };
-
-  const signIn = (credentials: Credentials) => {
-    if (!requestSignIn) {
-      throw new Error("requestSignIn is not defined.");
-    }
-    setIsLoading(true);
-    return requestSignIn(credentials)
-      .then((response) =>
-        response?.errorCode ? response : completeSignIn(response),
-      )
-      .finally(() => setIsLoading(false));
-  };
-
-  const signInAsGuest = () => {
-    if (!requestSignInAsGuest) {
-      throw new Error("requestSignInAsGuest is not defined.");
-    }
-    setIsLoading(true);
-    return requestSignInAsGuest(readGuestId())
-      .then((response) => {
-        if (response?.errorCode) return response;
-        keepGuestId(response?.data?.id);
-        return completeSignIn(response);
-      })
-      .finally(() => setIsLoading(false));
   };
 
   const logout = () =>
@@ -193,6 +166,7 @@ export const SessionProvider: FC<SessionProviderProps> = ({
         logout,
         signUp,
         signIn,
+        verifySecondFactor,
         signInAsGuest,
         isLoading,
       }}

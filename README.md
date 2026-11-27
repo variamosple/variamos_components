@@ -58,6 +58,8 @@ Since 0.12.0:
 - `useUnsavedInput(holdsInput, { keptOnNavigation: true })` (also an option of `useDiscardConfirmation`) says that a form stays when the page changes, as the global bug form of the header does. `hasUnsavedInput({ leavingPage: true })` leaves such forms out: a guard of the routes of an application uses it, so that the back button no longer asks while only the global bug form holds input. The session and the closing of the tab still count every form.
 - `DiscardInputPrompt` takes `discardLabel`, the name of the answer that drops the input ("Discard" by default).
 
+Since 0.13.0 `SessionProvider` handles the second factor of the admin (EV-87). Give it `requestSignInMfa(code, rememberDevice)`, the call to `POST /auth/sign-in/mfa`. When the password is right and the account has a second factor, `useSession().signIn()` resolves to an answer with `data.mfaRequired` (and `data.trustedDeviceDays` when the admin offers to trust the browser), without an error and without loading a session. `useSession().verifySecondFactor(code, rememberDevice)` then sends the code and loads the session as `signIn` does, so the page goes on without a reload. A refused code resolves with its `errorCode`, and the session is not loaded. A sign-in page that still sets an `errorCode` on the answer that waits for the code works as before.
+
 ## Development
 
 Requires Node 26 (`.nvmrc`, `.mise.toml`). `npm install` sets up the Git hooks: Biome and cspell on the staged files before a commit, the conventional commit format, and typecheck, lint and tests before a push.
