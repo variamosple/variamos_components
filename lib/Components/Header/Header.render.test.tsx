@@ -302,6 +302,93 @@ describe("Header", () => {
     },
   );
 
+  const categoriesIn = (form: HTMLElement) =>
+    within(within(form).getByLabelText("Category *"))
+      .getAllByRole("option")
+      .map((option) => option.textContent);
+
+  it("opens the bug form at once, then shows the categories of the admin (EV-41)", async () => {
+    let answerCategories: (response: Response) => void = () => undefined;
+    const categories = (input: RequestInfo | URL) =>
+      String(input) === "/bugs/categories"
+        ? new Promise<Response>((resolve) => {
+            answerCategories = resolve;
+          })
+        : emptyAnswer();
+    vi.stubGlobal("fetch", vi.fn(categories));
+    const user = userOf();
+    renderWithContexts(<Header signInUrl="/login" />, {
+      user,
+      notificationsUrl: "https://notifications.example.test",
+    });
+    await screen.findByText(user.name);
+    expect(fetch).not.toHaveBeenCalledWith(
+      "/bugs/categories",
+      expect.anything(),
+    );
+
+    Events.publish("openReportBugModal", {});
+    const form = await screen.findByRole("dialog", {
+      name: "Report a New Bug",
+    });
+    expect(categoriesIn(form)).toEqual([
+      "Editor",
+      "Model",
+      "Language",
+      "Project",
+      "Simulation",
+      "Account/Security",
+      "Other",
+    ]);
+    await userEvent.type(within(form).getByLabelText("Title *"), "Save fails");
+
+    answerCategories(Response.json({ data: ["Model", "Language", "Other"] }));
+
+    await waitFor(() =>
+      expect(categoriesIn(form)).toEqual(["Model", "Language", "Other"]),
+    );
+    // Typing goes on once the list came: nothing typed before was dropped
+    await userEvent.type(within(form).getByLabelText("Title *"), " on save");
+    expect(within(form).getByLabelText("Title *")).toHaveValue(
+      "Save fails on save",
+    );
+    expect(within(form).getByLabelText("Category *")).toHaveValue("Model");
+  });
+
+  it("keeps the fixed categories when the admin list cannot be read", async () => {
+    const failing = (input: RequestInfo | URL) =>
+      String(input) === "/bugs/categories"
+        ? Promise.resolve(
+            Response.json(
+              { errorCode: 500, message: "Internal error" },
+              { status: 500 },
+            ),
+          )
+        : emptyAnswer();
+    vi.stubGlobal("fetch", vi.fn(failing));
+    const user = userOf();
+    renderWithContexts(<Header signInUrl="/login" />, {
+      user,
+      notificationsUrl: "https://notifications.example.test",
+    });
+    await screen.findByText(user.name);
+
+    Events.publish("openReportBugModal", {});
+    const form = await screen.findByRole("dialog", {
+      name: "Report a New Bug",
+    });
+    await waitFor(() =>
+      expect(fetch).toHaveBeenCalledWith(
+        "/bugs/categories",
+        expect.objectContaining({ credentials: "omit" }),
+      ),
+    );
+
+    expect(categoriesIn(form)).toHaveLength(7);
+    expect(within(form).getByLabelText("Category *")).toHaveValue("Editor");
+    expect(within(form).getByLabelText("Title *")).toBeEnabled();
+  });
+
   it("keeps the form, its text and its file when the report is refused", async () => {
     const refused = (input: RequestInfo | URL) =>
       String(input) === "/bugs"

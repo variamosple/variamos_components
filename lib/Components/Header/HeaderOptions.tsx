@@ -5,6 +5,7 @@ import { useMenu, useRouter, useSession } from "../../Context";
 import { mapToWebTarget } from "../../Model";
 import { DialogErrorBoundary } from "../DialogErrorBoundary";
 import { BugFormModal } from "./BugFormModal";
+import { useBugCategories } from "./bugCategories";
 import { SignOutQuestion, useSignOut } from "./signOut";
 import { useBugReport } from "./useBugReport";
 
@@ -17,16 +18,6 @@ export interface HeaderOptionsProps {
  * the page, so that bug reports go to "/bugs" there.
  */
 export const DEFAULT_ADMIN_API_URL = "/v1";
-
-const BUG_CATEGORIES = [
-  "Editor",
-  "Model",
-  "Language",
-  "Project",
-  "Simulation",
-  "Account/Security",
-  "Other",
-];
 
 export const HeaderOptions: FC<HeaderOptionsProps> = ({
   adminApiUrl: propAdminApiUrl,
@@ -44,6 +35,9 @@ export const HeaderOptions: FC<HeaderOptionsProps> = ({
   const adminApiUrl = propAdminApiUrl || DEFAULT_ADMIN_API_URL;
 
   const bugReport = useBugReport(adminApiUrl);
+  // The list of the admin, read when the form opens; the fixed list until
+  // then, and when it cannot be read (EV-41)
+  const bugCategories = useBugCategories(adminApiUrl, bugReport.show);
 
   const menuOptions = useMemo(
     () => (options ?? []).filter((option) => isAllowedFor(option, user)),
@@ -112,7 +106,7 @@ export const HeaderOptions: FC<HeaderOptionsProps> = ({
           show={bugReport.show}
           onHide={bugReport.close}
           onSubmit={(report, file) => void bugReport.submit(report, file)}
-          categories={BUG_CATEGORIES}
+          categories={bugCategories}
           isSubmitting={bugReport.isSubmitting}
           isReadOnly={isReadOnly}
           errorMessage={bugReport.error}

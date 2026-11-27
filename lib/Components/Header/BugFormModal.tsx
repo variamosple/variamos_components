@@ -19,7 +19,8 @@ interface BugFormModalProps {
   show: boolean;
   onHide: () => void;
   onSubmit: (data: BugReport, file?: File) => void;
-  categories: string[];
+  /** Its first one is chosen when the form opens. */
+  categories: readonly string[];
   isSubmitting: boolean;
   /** Nothing can be saved (lost connection, ended session): no sending. */
   isReadOnly?: boolean;
@@ -121,15 +122,25 @@ const BugFormFooter: FC<BugFormFooterProps> = ({
   </Modal.Footer>
 );
 
-/** The fields of the form, set again each time it opens. */
+/**
+ * The fields of the form, set again each time it opens. The list of
+ * categories can change while it is open (EV-41): the category chosen stays
+ * while the list holds it, and only the category follows the list, never
+ * the text typed.
+ */
 function useBugFields(
   show: boolean,
-  defaultCategory: string,
+  categories: readonly string[],
   prefill: BugReportPrefill,
 ) {
+  const defaultCategory = categories[0] || "Other";
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("");
+  // The category chosen by the reporter, empty while untouched
+  const [chosenCategory, setCategory] = useState("");
+  const category = categories.includes(chosenCategory)
+    ? chosenCategory
+    : defaultCategory;
   const [component, setComponent] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   // Messages appear after the first submission attempt only
@@ -139,12 +150,12 @@ function useBugFields(
     if (show) {
       setTitle(prefill.title ?? "");
       setDescription(prefill.description ?? "");
-      setCategory(defaultCategory);
+      setCategory("");
       setComponent("");
       setSelectedFile(null);
       setSubmitted(false);
     }
-  }, [show, defaultCategory, prefill]);
+  }, [show, prefill]);
 
   // A report with input asks before it is closed (UX-08), and the session
   // keeps the page while it holds input (TRV-65). What it opened with is
@@ -187,7 +198,6 @@ export const BugFormModal: FC<BugFormModalProps> = ({
   errorMessage,
   prefill = NO_PREFILL,
 }) => {
-  const defaultCategory = categories[0] || "Other";
   const {
     title,
     setTitle,
@@ -202,7 +212,7 @@ export const BugFormModal: FC<BugFormModalProps> = ({
     submitted,
     setSubmitted,
     holdsInput,
-  } = useBugFields(show, defaultCategory, prefill);
+  } = useBugFields(show, categories, prefill);
   // The dialog is announced by its title
   const titleId = useId();
   const errors = submitted ? bugFormErrors({ title, description }) : {};
