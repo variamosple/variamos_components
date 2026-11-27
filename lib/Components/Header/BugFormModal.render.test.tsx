@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { axeViolations } from "../../../test/renderWithContexts";
@@ -244,6 +244,88 @@ describe("BugFormModal", () => {
     expect(screen.getByRole("button", { name: "Report Bug" })).toBeDisabled();
     expect(onSubmit).not.toHaveBeenCalled();
     expect(screen.getByLabelText("Title *")).toHaveValue("Crash");
+  });
+
+  describe("when the list of categories changes while it is open (EV-41)", () => {
+    const renderWith = (categories: readonly string[]) => {
+      const onSubmit = vi.fn();
+      const form = (list: readonly string[]) => (
+        <BugFormModal
+          show
+          onHide={vi.fn()}
+          onSubmit={onSubmit}
+          categories={list}
+          isSubmitting={false}
+        />
+      );
+      const { rerender } = render(form(categories));
+      return {
+        onSubmit,
+        change: (list: readonly string[]) => rerender(form(list)),
+      };
+    };
+
+    it("keeps the text typed and takes the first category of the new list", async () => {
+      const { change } = renderWith(CATEGORIES);
+      await fillIn();
+
+      change(["Language", "Editor"]);
+
+      expect(screen.getByLabelText("Title *")).toHaveValue("Save fails");
+      expect(screen.getByLabelText("Description *")).toHaveValue(
+        "Open a model, press save: nothing happens.",
+      );
+      expect(screen.getByLabelText("Category *")).toHaveValue("Language");
+      expect(
+        within(screen.getByLabelText("Category *"))
+          .getAllByRole("option")
+          .map((option) => option.textContent),
+      ).toEqual(["Language", "Editor"]);
+      expect(hasUnsavedInput()).toBe(true);
+    });
+
+    it("keeps the category chosen while the new list holds it", async () => {
+      const { onSubmit, change } = renderWith(CATEGORIES);
+      await fillIn();
+      await userEvent.selectOptions(
+        screen.getByLabelText("Category *"),
+        "Model",
+      );
+
+      change(["Language", "Model"]);
+      await userEvent.click(screen.getByRole("button", { name: "Report Bug" }));
+
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ category: "Model" }),
+        undefined,
+      );
+    });
+
+    it("sends a category of the new list when the one chosen left it", async () => {
+      const { onSubmit, change } = renderWith(CATEGORIES);
+      await fillIn();
+      await userEvent.selectOptions(
+        screen.getByLabelText("Category *"),
+        "Model",
+      );
+
+      change(["Language", "Editor"]);
+      expect(screen.getByLabelText("Category *")).toHaveValue("Language");
+      await userEvent.click(screen.getByRole("button", { name: "Report Bug" }));
+
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ category: "Language" }),
+        undefined,
+      );
+    });
+
+    it("still closes at once when nothing was typed", () => {
+      const { change } = renderWith(CATEGORIES);
+
+      change(["Language", "Editor"]);
+
+      expect(hasUnsavedInput()).toBe(false);
+    });
   });
 
   it("has no accessibility violation", async () => {
